@@ -1,13 +1,63 @@
-# AI Image Generator
+# Chobi Image Generator
 
-This is an AI image generation application built with Next.js, React, and Google's Gemini API.
+An AI-powered image generation app using Gemini's image generation capabilities.
+
+## Quick Start
+
+### Windows Users
+
+Two batch files are included for easy startup:
+
+1. **start-dev-server.bat** - Starts the development server on port 4000
+2. **start-dev-server-with-browser.bat** - Starts the server and automatically opens your browser
+
+Simply double-click either file to start the server.
+
+### Manual Start
+
+If you prefer to start the server manually:
+
+```bash
+# Using npm
+npm run dev -- --port 4000
+
+# Using yarn
+yarn dev --port 4000
+```
+
+Then open your browser to http://localhost:4000
 
 ## Features
 
-- Generate high-quality AI images using Google's Gemini models
-- Customize image generation with different styles, resolutions, and aspect ratios
-- Advanced options including negative prompts, seed values, and steps
-- Image history to view and reuse previous generations
+- Generate high-quality 16:9 images using Gemini AI
+- Customize generation with negative prompts
+- Manage multiple API keys
+- Save and download generated images
+- View image generation history
+
+## API Keys
+
+To use the application, you need a Gemini API key:
+
+1. Sign up for a Google AI Studio account and get your API key
+2. Add your API key in the app settings panel
+
+## Development
+
+This project uses:
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+
+To install dependencies:
+
+```bash
+npm install
+# or
+yarn install
+```
 
 ## Getting Started
 
@@ -112,4 +162,3 @@ This application uses Vercel Blob Storage for efficiently storing generated imag
 7. When images are removed from history, they are also deleted from Blob storage
 
 This complete lifecycle management ensures efficient use of storage resources and proper cleanup of unused images.
-# chobi
