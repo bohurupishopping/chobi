@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Create a quality-enhanced prompt with specific details for high-quality generation
-    const qualityEnhancement = "high quality illustration, detailed artwork, vibrant colors, professional illustration, cohesive style, crisp details";
+    const qualityEnhancement = "high quality cinematic illustration, detailed artwork, professional illustration, crisp details";
     
     // Build the complete prompt with enhancements and appropriate negative prompt handling
     let enhancedPrompt = `${prompt}. ${qualityEnhancement}`;
@@ -42,11 +42,6 @@ export async function POST(request: NextRequest) {
     // Add seed, steps, and aspect ratio configuration
     const configOptions: any = {
       responseModalities: [Modality.TEXT, Modality.IMAGE],
-      // Set aspect ratio to 16:9
-      imageRatio: {
-        width: 16,
-        height: 9
-      }
     };
     
     if (seed) {
@@ -119,7 +114,6 @@ export async function POST(request: NextRequest) {
         blobUrl: blob.url,          // Also send the Blob URL for persistent storage
         text: responseText || "Image generated successfully",
         prompt: prompt,
-        aspectRatio: "16:9",
         timestamp: Date.now(),
       });
       
