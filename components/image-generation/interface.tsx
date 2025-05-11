@@ -28,6 +28,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImagePreview } from "./image-preview";
 import { buildPrompt, promptTemplates } from "@/lib/prompt-builder";
 import { motion } from "framer-motion";
+import { LoadingAnimation } from "@/components/ui/loading-animation";
+import { imageStyles } from "@/config/prompts";
 
 interface ImageModel {
   id: string;
