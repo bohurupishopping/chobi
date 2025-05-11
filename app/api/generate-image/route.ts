@@ -2,6 +2,22 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import { put } from '@vercel/blob';
 
+// Maximum prompt length that Gemini can handle effectively
+const MAX_PROMPT_LENGTH = 4000;
+
+// Function to truncate prompt if it exceeds the maximum length
+function truncatePrompt(prompt: string): string {
+  if (prompt.length > MAX_PROMPT_LENGTH) {
+    const truncated = prompt.substring(0, MAX_PROMPT_LENGTH);
+    const lastPeriod = truncated.lastIndexOf('.');
+    const lastNewline = truncated.lastIndexOf('\n');
+    const breakPoint = Math.max(lastPeriod, lastNewline);
+    
+    return breakPoint > 0 ? truncated.substring(0, breakPoint + 1) : truncated;
+  }
+  return prompt;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { prompt, negativePrompt, seed, steps, apiKey } = await request.json();
@@ -28,24 +44,36 @@ export async function POST(request: NextRequest) {
       apiKey: geminiApiKey
     });
 
+    // Process and validate the prompts
+    const processedPrompt = truncatePrompt(prompt);
+    const processedNegativePrompt = negativePrompt ? truncatePrompt(negativePrompt) : "";
+
     // Create a quality-enhanced prompt with specific details for high-quality generation
     const qualityEnhancement = "high quality cinematic illustration, detailed artwork, professional illustration, crisp details";
     
     // Build the complete prompt with enhancements and appropriate negative prompt handling
-    let enhancedPrompt = `${prompt}. ${qualityEnhancement}`;
+    let enhancedPrompt = `${processedPrompt}. ${qualityEnhancement}`;
     
-    // Add the negative prompt as a separate instruction if provided
-    const negativePromptText = negativePrompt ? 
-      `Avoid: ${negativePrompt}, blurry, distorted, low resolution, poor quality, deformed, pixelated` : 
+    // Add randomization parameters to ensure unique generations
+    const randomSeed = seed || Math.floor(Math.random() * 1000000);
+    const timestamp = Date.now();
+    enhancedPrompt = `${enhancedPrompt} [Seed: ${randomSeed}, Timestamp: ${timestamp}]`;
+
+    // Add the negative prompt as a separate instruction
+    const negativePromptText = processedNegativePrompt ? 
+      `Avoid: ${processedNegativePrompt}, blurry, distorted, low resolution, poor quality, deformed, pixelated` : 
       "Avoid: blurry, distorted, low resolution, poor quality, deformed, unnatural, pixelated";
 
-    // Add seed, steps, and aspect ratio configuration
+    // Configuration options for the generation
     const configOptions: any = {
       responseModalities: [Modality.TEXT, Modality.IMAGE],
+      temperature: 0.9, // Add some randomness to the generation
+      topK: 40,        // Increase variety in the output
+      topP: 0.95,      // Allow more creative generations
     };
     
-    if (seed) {
-      configOptions.seed = seed;
+    if (randomSeed) {
+      configOptions.seed = randomSeed;
     }
     
     if (steps) {
@@ -65,7 +93,6 @@ export async function POST(request: NextRequest) {
       
       const response = await model;
       
-      // Process the response if it exists
       if (!response || !response.candidates || !response.candidates[0]?.content?.parts) {
         return NextResponse.json(
           { error: "No valid response received from the AI model" },
@@ -96,30 +123,46 @@ export async function POST(request: NextRequest) {
       const base64ImageData = `data:image/png;base64,${imageData}`;
       
       // Store the image in Vercel Blob
-      // Extract the base64 data from the data URL
       const buffer = Buffer.from(imageData, 'base64');
+      const filename = `generated-image-16x9-${timestamp}-${randomSeed}.png`;
       
-      // Generate a unique filename
-      const filename = `generated-image-16x9-${Date.now()}-${seed || 'random'}.png`;
-      
-      // Upload to Vercel Blob
       const blob = await put(filename, buffer, {
         contentType: 'image/png',
-        access: 'public', // Make the image publicly accessible
+        access: 'public',
       });
 
       // Return both the base64 data and the Blob URL
       return NextResponse.json({
-        imageData: base64ImageData, // Keep sending the base64 data for immediate display
-        blobUrl: blob.url,          // Also send the Blob URL for persistent storage
+        imageData: base64ImageData,
+        blobUrl: blob.url,
         text: responseText || "Image generated successfully",
-        prompt: prompt,
-        timestamp: Date.now(),
+        prompt: processedPrompt,
+        timestamp: timestamp,
+        metadata: {
+          seed: randomSeed,
+          steps: steps,
+          promptLength: processedPrompt.length,
+          wasPromptTruncated: processedPrompt.length < prompt.length,
+          temperature: configOptions.temperature,
+          topK: configOptions.topK,
+          topP: configOptions.topP
+        }
       });
       
     } catch (apiError: any) {
+      // Enhanced error handling with more specific error messages
+      let errorMessage = `Error from Gemini API: ${apiError.message}`;
+      
+      if (apiError.message?.includes("invalid_request")) {
+        errorMessage = "Invalid request: Please check your prompt and parameters.";
+      } else if (apiError.message?.includes("authentication")) {
+        errorMessage = "Authentication failed: Please check your API key.";
+      } else if (apiError.message?.includes("quota")) {
+        errorMessage = "API quota exceeded: Please check your usage limits.";
+      }
+      
       return NextResponse.json(
-        { error: `Error from Gemini API: ${apiError.message}` },
+        { error: errorMessage },
         { status: 500 }
       );
     }
