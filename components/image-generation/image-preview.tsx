@@ -79,9 +79,15 @@ export function ImagePreview({
     if (storedHistory) {
       try {
         const parsedHistory = JSON.parse(storedHistory);
-        setImageHistory(parsedHistory);
+        // Ensure all required fields are present
+        const validHistory = parsedHistory.filter((item: any) => 
+          item.id && (item.imageData || item.blobUrl) && item.prompt && item.timestamp
+        );
+        setImageHistory(validHistory);
       } catch (e) {
         console.error('Failed to parse image history from localStorage:', e);
+        // Clear invalid history
+        localStorage.removeItem('imageHistory');
       }
     }
   }, []);
@@ -102,7 +108,8 @@ export function ImagePreview({
       setImageHistory(prevHistory => {
         // Check if this image already exists in history
         const imageExists = prevHistory.some(
-          item => item.imageData === imageData || item.blobUrl === blobUrl
+          item => (item.imageData && item.imageData === imageData) || 
+                 (item.blobUrl && item.blobUrl === blobUrl)
         );
 
         if (!imageExists) {
@@ -128,10 +135,11 @@ export function ImagePreview({
 
   const handleSelectHistoryImage = (historyItem: ImageHistoryItem) => {
     isSelectingFromHistory.current = true;
-    setImageData(historyItem.imageData);
-    // Also update the current image URL if available
-    if (historyItem.blobUrl) {
-      setBlobUrl?.(historyItem.blobUrl);
+    if (historyItem.imageData) {
+      setImageData(historyItem.imageData);
+    }
+    if (historyItem.blobUrl && setBlobUrl) {
+      setBlobUrl(historyItem.blobUrl);
     }
   };
 
@@ -198,6 +206,7 @@ export function ImagePreview({
     // Store only minimal data in localStorage
     const minimalHistory = updatedHistory.map(item => ({
       id: item.id,
+      imageData: item.imageData,
       blobUrl: item.blobUrl || '',
       prompt: item.prompt,
       timestamp: item.timestamp,
@@ -264,6 +273,12 @@ export function ImagePreview({
                                 src={item.blobUrl || item.imageData}
                                 alt={item.prompt.substring(0, 10) + "..."}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // If blob URL fails, try imageData
+                                  if (item.blobUrl && item.imageData && e.currentTarget.src === item.blobUrl) {
+                                    e.currentTarget.src = item.imageData;
+                                  }
+                                }}
                               />
                               <Button
                                 variant="ghost"
