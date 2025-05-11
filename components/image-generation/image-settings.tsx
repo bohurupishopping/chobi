@@ -83,6 +83,7 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
   const [localSettings, setLocalSettings] = useState(settings);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingKey, setIsSavingKey] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<"gemini" | "together">("gemini");
   const { toast } = useToast();
 
@@ -102,35 +103,17 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
     }
   ];
 
-  // Load API keys from localStorage on mount
+  // Load API keys from localStorage only on client side
   useEffect(() => {
-    const storedKeys = localStorage.getItem('ai_api_keys');
-    if (storedKeys) {
-      try {
+    try {
+      const storedKeys = localStorage.getItem('ai_api_keys');
+      if (storedKeys) {
         setApiKeys(JSON.parse(storedKeys));
-      } catch (e) {
-        console.error('Failed to parse API keys from localStorage:', e);
       }
-    }
-    
-    // Load selected model if it exists
-    const storedModel = localStorage.getItem('selected_image_model');
-    if (storedModel) {
-      try {
-        const parsedModel = JSON.parse(storedModel);
-        setLocalSettings(prev => ({
-          ...prev,
-          selectedModel: parsedModel
-        }));
-      } catch (e) {
-        console.error('Failed to parse selected model from localStorage:', e);
-      }
-    } else if (!settings.selectedModel) {
-      // Set default model if none is selected
-      setLocalSettings(prev => ({
-        ...prev,
-        selectedModel: availableModels[0]
-      }));
+      setIsInitialized(true);
+    } catch (e) {
+      console.error('Failed to parse API keys from localStorage:', e);
+      setIsInitialized(true);
     }
   }, []);
 
@@ -141,14 +124,14 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
 
   // Save API keys to localStorage when they change
   useEffect(() => {
-    if (apiKeys.length > 0) {
+    if (isInitialized && apiKeys.length > 0) {
       try {
         localStorage.setItem('ai_api_keys', JSON.stringify(apiKeys));
       } catch (e) {
         console.error('Failed to save API keys to localStorage:', e);
       }
     }
-  }, [apiKeys]);
+  }, [apiKeys, isInitialized]);
 
   const handleNegativePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setLocalSettings({

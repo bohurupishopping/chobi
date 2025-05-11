@@ -56,29 +56,24 @@ export function ImageGenerationInterface() {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [inputValue, setInputValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [settings, setSettings] = useState<Settings>(() => {
-    const savedSettings = localStorage.getItem('image_generation_settings');
-    if (savedSettings) {
-      try {
-        return JSON.parse(savedSettings);
-      } catch (e) {
-        console.error('Failed to parse saved settings:', e);
-      }
-    }
-    
-    return {
-      negativePrompt: promptTemplates[0].template.negativePrompt,
-      seed: Math.floor(Math.random() * 1000000),
-      steps: 4,
-      selectedModel: {
-        id: "together-1",
-        name: "FLUX.1 Schnell",
-        provider: "together",
-        model: "black-forest-labs/FLUX.1-schnell-Free"
-      },
-      selectedTemplate: "no-template"
-    };
-  });
+
+  // Default settings without localStorage dependency
+  const defaultSettings: Settings = {
+    negativePrompt: promptTemplates[0].template.negativePrompt,
+    seed: Math.floor(Math.random() * 1000000),
+    steps: 4,
+    selectedModel: {
+      id: "together-1",
+      name: "FLUX.1 Schnell",
+      provider: "together",
+      model: "black-forest-labs/FLUX.1-schnell-Free"
+    },
+    selectedTemplate: "no-template"
+  };
+
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [selectedProvider, setSelectedProvider] = useState<"gemini" | "together">("together");
+  const [isSettingsInitialized, setIsSettingsInitialized] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Available models
@@ -97,10 +92,6 @@ export function ImageGenerationInterface() {
     }
   ];
 
-  const [selectedProvider, setSelectedProvider] = useState<"gemini" | "together">(
-    settings.selectedModel?.provider || "together"
-  );
-
   // Example loading texts
   const loadingTexts = [
     "Creating your masterpiece...",
@@ -108,14 +99,32 @@ export function ImageGenerationInterface() {
     "Adding the final touches..."
   ];
   
-  // Save settings to localStorage whenever they change
+  // Load settings from localStorage only on client side
   useEffect(() => {
     try {
-      localStorage.setItem('image_generation_settings', JSON.stringify(settings));
+      const savedSettings = localStorage.getItem('image_generation_settings');
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        setSettings(parsedSettings);
+        setSelectedProvider(parsedSettings.selectedModel?.provider || "together");
+      }
+      setIsSettingsInitialized(true);
     } catch (e) {
-      console.error('Failed to save settings:', e);
+      console.error('Failed to load settings:', e);
+      setIsSettingsInitialized(true);
     }
-  }, [settings]);
+  }, []);
+
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    if (isSettingsInitialized) {
+      try {
+        localStorage.setItem('image_generation_settings', JSON.stringify(settings));
+      } catch (e) {
+        console.error('Failed to save settings:', e);
+      }
+    }
+  }, [settings, isSettingsInitialized]);
 
   const generateImage = async (inputPrompt: string) => {
     if (!inputPrompt.trim() || isLoading) return;
@@ -147,17 +156,20 @@ export function ImageGenerationInterface() {
     }, 1500);
     
     try {
-      const storedKeys = localStorage.getItem('ai_api_keys');
       let apiKey = null;
       
-      if (storedKeys) {
+      // Only try to access localStorage on the client side
+      if (typeof window !== 'undefined') {
         try {
-          const keys = JSON.parse(storedKeys);
-          const activeKey = keys.find((key: any) => 
-            key.isActive && key.provider === settings.selectedModel?.provider
-          );
-          if (activeKey) {
-            apiKey = activeKey.key;
+          const storedKeys = localStorage.getItem('ai_api_keys');
+          if (storedKeys) {
+            const keys = JSON.parse(storedKeys);
+            const activeKey = keys.find((key: any) => 
+              key.isActive && key.provider === settings.selectedModel?.provider
+            );
+            if (activeKey) {
+              apiKey = activeKey.key;
+            }
           }
         } catch (e) {
           console.error('Failed to parse API keys from localStorage:', e);
