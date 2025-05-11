@@ -54,7 +54,7 @@ interface ApiKey {
   name: string;
   key: string;
   isActive: boolean;
-  provider: "gemini" | "together";
+  provider: "gemini" | "together" | "openai";
 }
 
 interface ImageModel {
@@ -84,7 +84,7 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingKey, setIsSavingKey] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<"gemini" | "together">("gemini");
+  const [selectedProvider, setSelectedProvider] = useState<"gemini" | "together" | "openai">("gemini");
   const { toast } = useToast();
 
   // Available models
@@ -479,23 +479,29 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
                 </div>
               </div>
 
-              <Tabs defaultValue="gemini" className="w-full" onValueChange={(v) => setSelectedProvider(v as "gemini" | "together")}>
+              <Tabs defaultValue="gemini" className="w-full" onValueChange={(v) => setSelectedProvider(v as "gemini" | "together" | "openai")}>
                 <TabsList className="w-full bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg">
                   <TabsTrigger 
                     value="gemini" 
-                    className="w-1/2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900"
+                    className="w-1/3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900"
                   >
                     Gemini
                   </TabsTrigger>
                   <TabsTrigger 
                     value="together" 
-                    className="w-1/2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900"
+                    className="w-1/3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900"
                   >
                     Together AI
                   </TabsTrigger>
+                  <TabsTrigger 
+                    value="openai" 
+                    className="w-1/3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-900"
+                  >
+                    OpenAI
+                  </TabsTrigger>
                 </TabsList>
 
-                {["gemini", "together"].map((provider) => (
+                {["gemini", "together", "openai"].map((provider) => (
                   <TabsContent key={provider} value={provider} className="mt-4">
                     <div className="space-y-4">
                       <Button
@@ -505,7 +511,7 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
                         onClick={() => setIsAdding(true)}
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Add {provider === "gemini" ? "Gemini" : "Together AI"} Key
+                        Add {provider === "gemini" ? "Gemini" : provider === "together" ? "Together AI" : "OpenAI"} Key
                       </Button>
 
                       {isAdding && selectedProvider === provider && (
@@ -514,7 +520,7 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
                             <label className="text-xs text-zinc-500 dark:text-zinc-400">Key Name</label>
                             <Input 
                               type="text"
-                              placeholder={`e.g., My ${provider === "gemini" ? "Gemini" : "Together AI"} Key 1`}
+                              placeholder={`e.g., My ${provider === "gemini" ? "Gemini" : provider === "together" ? "Together AI" : "OpenAI"} Key 1`}
                               value={newKeyName}
                               onChange={(e) => setNewKeyName(e.target.value)}
                               className="h-8 text-sm bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
@@ -524,7 +530,7 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
                             <label className="text-xs text-zinc-500 dark:text-zinc-400">API Key</label>
                             <Input 
                               type="password"
-                              placeholder={`Enter your ${provider === "gemini" ? "Gemini" : "Together AI"} API key`}
+                              placeholder={`Enter your ${provider === "gemini" ? "Gemini" : provider === "together" ? "Together AI" : "OpenAI"} API key`}
                               value={newKeyValue}
                               onChange={(e) => setNewKeyValue(e.target.value)}
                               className="h-8 text-sm bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
@@ -612,10 +618,10 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
                           <div className="flex flex-col items-center justify-center p-6 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-dashed border-zinc-200 dark:border-zinc-700">
                             <Key className="h-8 w-8 text-zinc-400 mb-2" />
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
-                              No {provider === "gemini" ? "Gemini" : "Together AI"} API keys added
+                              No {provider === "gemini" ? "Gemini" : provider === "together" ? "Together AI" : "OpenAI"} API keys added
                             </p>
                             <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center mt-1">
-                              Add your {provider === "gemini" ? "Gemini" : "Together AI"} API key to use for image generation
+                              Add your {provider === "gemini" ? "Gemini" : provider === "together" ? "Together AI" : "OpenAI"} API key to use for image generation
                             </p>
                           </div>
                         )}

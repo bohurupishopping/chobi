@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { AIInputWithLoading } from "@/components/ui/ai-input-with-loading";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,8 +28,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImagePreview } from "./image-preview";
 import { buildPrompt, promptTemplates } from "@/lib/prompt-builder";
 import { motion } from "framer-motion";
-import { LoadingAnimation } from "@/components/ui/loading-animation";
-import { imageStyles } from "@/config/prompts";
 
 interface ImageModel {
   id: string;
@@ -56,6 +54,8 @@ export function ImageGenerationInterface() {
   const [progress, setProgress] = useState(0);
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [inputValue, setInputValue] = useState("");
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhancedPrompt, setEnhancedPrompt] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Default settings without localStorage dependency
@@ -265,21 +265,95 @@ export function ImageGenerationInterface() {
     }
   };
 
-  const promptSuggestions = [
-    "A serene mountain landscape at sunset with snow-capped peaks",
-    "A modern city street with neon signs and rain-slicked roads",
-    "A majestic Indian warrior princess standing atop a mountain peak at sunset, her armor glowing with mystical energy",
-    "A futuristic Mumbai cityscape with flying vehicles and holographic temples floating among the clouds",
-  ];
-
-  const applyPromptSuggestion = (suggestion: string) => {
-    setInputValue(suggestion);
-    generateImage(suggestion);
-  };
-
   const handleGenerateClick = () => {
     if (inputValue.trim() && !isLoading) {
       generateImage(inputValue);
+    }
+  };
+
+  const enhancePrompt = async () => {
+    if (!inputValue.trim() || isEnhancing) return;
+    
+    setIsEnhancing(true);
+    setError(null);
+    
+    try {
+      // Get OpenAI API key from localStorage
+      let apiKey = null;
+      try {
+        const storedKeys = localStorage.getItem('ai_api_keys');
+        if (storedKeys) {
+          const keys = JSON.parse(storedKeys);
+          const activeKey = keys.find((key: any) => 
+            key.isActive && key.provider === "openai"
+          );
+          if (activeKey) {
+            apiKey = activeKey.key;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse API keys from localStorage:', e);
+      }
+
+      if (!apiKey) {
+        setError('Please add and activate an OpenAI API key in settings to use prompt enhancement.');
+        return;
+      }
+
+      const response = await fetch('/api/enhance-prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          prompt: inputValue,
+          apiKey: apiKey
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to enhance prompt');
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No reader available');
+
+      const decoder = new TextDecoder();
+      let enhancedText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(5));
+              if (data.error) {
+                throw new Error(data.error);
+              }
+              enhancedText += data.content;
+              setEnhancedPrompt(enhancedText);
+            } catch (e) {
+              console.error('Error parsing SSE data:', e);
+              if (e instanceof Error && e.message !== 'Unexpected end of JSON input') {
+                throw e;
+              }
+            }
+          }
+        }
+      }
+
+      setInputValue(enhancedText.trim());
+    } catch (error) {
+      console.error('Error enhancing prompt:', error);
+      setError(error instanceof Error ? error.message : 'Failed to enhance prompt. Please try again.');
+    } finally {
+      setIsEnhancing(false);
     }
   };
 
@@ -386,30 +460,6 @@ export function ImageGenerationInterface() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-zinc-500"></span>
                     </div>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 px-2">
-                          <Wand2 className="w-3.5 h-3.5 text-zinc-500" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-72 p-2 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-                        <div className="space-y-1">
-                          <h4 className="text-xs font-medium text-zinc-500">Suggestions</h4>
-                          <div className="space-y-1">
-                            {promptSuggestions.map((suggestion, index) => (
-                              <button
-                                key={index}
-                                type="button"
-                                onClick={() => applyPromptSuggestion(suggestion)}
-                                className="w-full text-left p-2 text-xs rounded-md text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800"
-                              >
-                                {suggestion}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
                   </div>
                   
                   <div className={cn(
@@ -425,6 +475,33 @@ export function ImageGenerationInterface() {
                         className="w-full min-h-[200px] max-h-[300px] bg-zinc-50 dark:bg-zinc-800 border-0 resize-none p-4 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 rounded-xl"
                         disabled={isLoading}
                       />
+                      
+                      <div className="absolute bottom-4 right-4 flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "h-8 bg-white/80 dark:bg-zinc-800/80",
+                            "hover:bg-white dark:hover:bg-zinc-800",
+                            "transition-all duration-200",
+                            isEnhancing && "opacity-70"
+                          )}
+                          onClick={enhancePrompt}
+                          disabled={isEnhancing || !inputValue.trim() || isLoading}
+                        >
+                          {isEnhancing ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Enhancing...
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-4 h-4 mr-2" />
+                              Enhance
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 
