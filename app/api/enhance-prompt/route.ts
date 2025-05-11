@@ -4,10 +4,8 @@ import OpenAI from 'openai';
 export const runtime = 'edge';
 
 const systemPrompt = `You are an expert at enhancing image generation prompts. Your goal is to improve the given prompt by:
-1. Adding more descriptive details about lighting, atmosphere, and composition
-2. Including relevant artistic style references
+1. Adding more descriptive details about composition
 3. Specifying camera angles and perspectives where appropriate
-4. Adding technical details that would improve image quality
 5. Maintaining the original intent and core elements of the prompt
 
 Keep the enhanced prompt concise yet detailed. Do not add unnecessary complexity.`;

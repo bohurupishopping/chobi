@@ -67,9 +67,9 @@ export async function POST(request: NextRequest) {
     // Configuration options for the generation
     const configOptions: any = {
       responseModalities: [Modality.TEXT, Modality.IMAGE],
-      temperature: 0.9, // Add some randomness to the generation
+      temperature: 0.6, // Add some randomness to the generation
       topK: 40,        // Increase variety in the output
-      topP: 0.95,      // Allow more creative generations
+      topP: 0.85,      // Allow more creative generations
     };
     
     if (randomSeed) {

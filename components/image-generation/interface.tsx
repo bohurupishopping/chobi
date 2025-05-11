@@ -178,8 +178,8 @@ export function ImageGenerationInterface() {
       }
       
       const apiEndpoint = settings.selectedModel?.provider === "together" 
-        ? "/api/generate-image-together" 
-        : "/api/generate-image";
+        ? "/api/together-model" 
+        : "/api/google-model";
 
       const adjustedSteps = settings.selectedModel?.provider === "together"
         ? Math.min(Math.max(1, settings.steps), 4)
