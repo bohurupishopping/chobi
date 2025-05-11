@@ -47,6 +47,7 @@ interface ImagePreviewProps {
   openInNewTab: () => void;
   setError: (error: string | null) => void;
   setImageData: (imageData: string) => void;
+  setBlobUrl?: (blobUrl: string | null) => void;
 }
 
 export function ImagePreview({
@@ -65,10 +66,12 @@ export function ImagePreview({
   openInNewTab,
   setError,
   setImageData,
+  setBlobUrl,
 }: ImagePreviewProps) {
   const [imageHistory, setImageHistory] = useState<ImageHistoryItem[]>([]);
   const [isHistorySidebarOpen, setIsHistorySidebarOpen] = useState(true);
   const isSelectingFromHistory = useRef(false);
+  const lastGenerationRef = useRef(generation);
 
   // Load image history from localStorage on component mount
   useEffect(() => {
@@ -76,72 +79,60 @@ export function ImagePreview({
     if (storedHistory) {
       try {
         const parsedHistory = JSON.parse(storedHistory);
-        
-        // Convert minimal history to full history items
-        // The actual image data will be loaded from the blobUrl when needed
-        const reconstructedHistory = parsedHistory.map((item: any) => ({
-          id: item.id,
-          imageData: item.blobUrl, // Use blobUrl as imageData initially
-          prompt: item.prompt,
-          timestamp: item.timestamp,
-          blobUrl: item.blobUrl,
-        }));
-        
-        setImageHistory(reconstructedHistory);
+        setImageHistory(parsedHistory);
       } catch (e) {
         console.error('Failed to parse image history from localStorage:', e);
       }
     }
   }, []);
 
-  // Save new image to history when generated, but not when selecting from history
+  // Update history when a new image is generated
   useEffect(() => {
-    if (imageData && prompt && !isLoading && !isSelectingFromHistory.current) {
-      try {
-        // Check if this image already exists in history to prevent duplicates
-        const imageExists = imageHistory.some(item => item.imageData === imageData);
-        
+    if (imageData && prompt && !isLoading && !isSelectingFromHistory.current && generation !== lastGenerationRef.current) {
+      lastGenerationRef.current = generation;
+      
+      const newHistoryItem: ImageHistoryItem = {
+        id: `img-${Date.now()}`,
+        imageData,
+        prompt,
+        timestamp: Date.now(),
+        blobUrl: blobUrl || undefined,
+      };
+
+      setImageHistory(prevHistory => {
+        // Check if this image already exists in history
+        const imageExists = prevHistory.some(
+          item => item.imageData === imageData || item.blobUrl === blobUrl
+        );
+
         if (!imageExists) {
-          // Create a new history item with the blob URL already provided by the API
-          const newHistoryItem: ImageHistoryItem = {
-            id: `img-${Date.now()}`,
-            imageData, // Keep the original data for immediate display
-            prompt,
-            timestamp: Date.now(),
-            blobUrl: blobUrl || undefined, // Use the blob URL provided by the API
-          };
+          // Add new image to history and limit to 10 items
+          const updatedHistory = [newHistoryItem, ...prevHistory].slice(0, 10);
           
-          // Limit history to 10 items to reduce local storage size
-          const updatedHistory = [newHistoryItem, ...imageHistory].slice(0, 10);
-          setImageHistory(updatedHistory);
-          
-          // Store only minimal data in localStorage - just IDs and URLs
-          const minimalHistory = updatedHistory.map(item => ({
-            id: item.id,
-            blobUrl: item.blobUrl || '',
-            prompt: item.prompt,
-            timestamp: item.timestamp,
-          }));
-          
+          // Save to localStorage
           try {
-            localStorage.setItem('imageHistory', JSON.stringify(minimalHistory));
-          } catch (storageError) {
-            console.error('Storage error:', storageError);
+            localStorage.setItem('imageHistory', JSON.stringify(updatedHistory));
+          } catch (e) {
+            console.error('Failed to save image history:', e);
           }
+          
+          return updatedHistory;
         }
-      } catch (e) {
-        console.error('Error processing image history:', e);
-      }
+        
+        return prevHistory;
+      });
     }
     
-    // Reset the flag after the effect runs
     isSelectingFromHistory.current = false;
   }, [imageData, blobUrl, prompt, generation, isLoading]);
 
   const handleSelectHistoryImage = (historyItem: ImageHistoryItem) => {
-    // Set the flag to prevent adding to history when selecting from history
     isSelectingFromHistory.current = true;
     setImageData(historyItem.imageData);
+    // Also update the current image URL if available
+    if (historyItem.blobUrl) {
+      setBlobUrl?.(historyItem.blobUrl);
+    }
   };
 
   const handleClearHistory = async () => {

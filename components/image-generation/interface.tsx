@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AIInputWithLoading } from "@/components/ui/ai-input-with-loading";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,9 @@ import {
   Wand2
 } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ImageSettings } from "./image-settings";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +28,22 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePreview } from "./image-preview";
+import { buildPrompt, promptTemplates } from "@/lib/prompt-builder";
+
+interface ImageModel {
+  id: string;
+  name: string;
+  provider: "gemini" | "together";
+  model: string;
+}
+
+interface Settings {
+  negativePrompt: string;
+  seed: number;
+  steps: number;
+  selectedModel: ImageModel;
+  selectedTemplate: string;
+}
 
 export function ImageGenerationInterface() {
   const [imageData, setImageData] = useState<string | null>(null);
@@ -44,11 +56,50 @@ export function ImageGenerationInterface() {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [inputValue, setInputValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [settings, setSettings] = useState({
-    negativePrompt: "",
-    seed: Math.floor(Math.random() * 1000000),
-    steps: 30,
+  const [settings, setSettings] = useState<Settings>(() => {
+    const savedSettings = localStorage.getItem('image_generation_settings');
+    if (savedSettings) {
+      try {
+        return JSON.parse(savedSettings);
+      } catch (e) {
+        console.error('Failed to parse saved settings:', e);
+      }
+    }
+    
+    return {
+      negativePrompt: promptTemplates[0].template.negativePrompt,
+      seed: Math.floor(Math.random() * 1000000),
+      steps: 4,
+      selectedModel: {
+        id: "together-1",
+        name: "FLUX.1 Schnell",
+        provider: "together",
+        model: "black-forest-labs/FLUX.1-schnell-Free"
+      },
+      selectedTemplate: "no-template"
+    };
   });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Available models
+  const availableModels: ImageModel[] = [
+    {
+      id: "together-1",
+      name: "FLUX.1 Schnell",
+      provider: "together",
+      model: "black-forest-labs/FLUX.1-schnell-Free"
+    },
+    {
+      id: "gemini-1",
+      name: "Gemini 2.0 Flash",
+      provider: "gemini",
+      model: "gemini-2.0-flash-preview-image-generation"
+    }
+  ];
+
+  const [selectedProvider, setSelectedProvider] = useState<"gemini" | "together">(
+    settings.selectedModel?.provider || "together"
+  );
 
   // Example loading texts
   const loadingTexts = [
@@ -57,6 +108,15 @@ export function ImageGenerationInterface() {
     "Adding the final touches..."
   ];
   
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('image_generation_settings', JSON.stringify(settings));
+    } catch (e) {
+      console.error('Failed to save settings:', e);
+    }
+  }, [settings]);
+
   const generateImage = async (inputPrompt: string) => {
     if (!inputPrompt.trim() || isLoading) return;
     
@@ -64,6 +124,11 @@ export function ImageGenerationInterface() {
     setError(null);
     setPrompt(inputPrompt);
     setProgress(0);
+    setImageData(null);
+    setBlobUrl(null);
+    
+    // Build the enhanced prompt using the template
+    const { prompt: enhancedPrompt, negativePrompt } = buildPrompt(inputPrompt, settings.selectedTemplate);
     
     // Start progress animation
     const interval = setInterval(() => {
@@ -82,14 +147,15 @@ export function ImageGenerationInterface() {
     }, 1500);
     
     try {
-      // Get the active API key from localStorage
-      const storedKeys = localStorage.getItem('gemini_api_keys');
+      const storedKeys = localStorage.getItem('ai_api_keys');
       let apiKey = null;
       
       if (storedKeys) {
         try {
           const keys = JSON.parse(storedKeys);
-          const activeKey = keys.find((key: any) => key.isActive);
+          const activeKey = keys.find((key: any) => 
+            key.isActive && key.provider === settings.selectedModel?.provider
+          );
           if (activeKey) {
             apiKey = activeKey.key;
           }
@@ -98,17 +164,26 @@ export function ImageGenerationInterface() {
         }
       }
       
-      const response = await fetch("/api/generate-image", {
+      const apiEndpoint = settings.selectedModel?.provider === "together" 
+        ? "/api/generate-image-together" 
+        : "/api/generate-image";
+
+      const adjustedSteps = settings.selectedModel?.provider === "together"
+        ? Math.min(Math.max(1, settings.steps), 4)
+        : settings.steps;
+      
+      const response = await fetch(apiEndpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          prompt: inputPrompt,
-          negativePrompt: settings.negativePrompt,
-          seed: Math.floor(Math.random() * 1000000),
-          steps: 30,
-          apiKey: apiKey, // Pass the API key to the backend
+          prompt: enhancedPrompt,
+          negativePrompt: negativePrompt,
+          seed: settings.seed,
+          steps: adjustedSteps,
+          apiKey: apiKey,
+          model: settings.selectedModel?.model,
         }),
       });
 
@@ -119,7 +194,9 @@ export function ImageGenerationInterface() {
       }
 
       setImageData(data.imageData);
-      setBlobUrl(data.blobUrl);
+      if (data.blobUrl) {
+        setBlobUrl(data.blobUrl);
+      }
       setGeneration(prev => prev + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred");
@@ -133,6 +210,11 @@ export function ImageGenerationInterface() {
 
   const handleRegenerateImage = () => {
     if (prompt) {
+      // Generate a new seed for each regeneration
+      setSettings({
+        ...settings,
+        seed: Math.floor(Math.random() * 1000000)
+      });
       generateImage(prompt);
     }
   };
@@ -171,9 +253,10 @@ export function ImageGenerationInterface() {
   };
 
   const promptSuggestions = [
-    "Professional headshot with neutral background",
-    "Artistic portrait with dramatic lighting",
-    "Casual portrait in natural outdoor setting",
+    "A serene mountain landscape at sunset with snow-capped peaks",
+    "A modern city street with neon signs and rain-slicked roads",
+    "A majestic Indian warrior princess standing atop a mountain peak at sunset, her armor glowing with mystical energy",
+    "A futuristic Mumbai cityscape with flying vehicles and holographic temples floating among the clouds",
   ];
 
   const applyPromptSuggestion = (suggestion: string) => {
@@ -187,12 +270,46 @@ export function ImageGenerationInterface() {
     }
   };
 
-  // The updated setNegativePrompt function to maintain type safety
-  const setNegativePrompt = (negativePrompt: string) => {
-    setSettings({
-      ...settings,
-      negativePrompt
-    });
+  // Handle settings updates
+  const updateSettings = (newSettings: any) => {
+    if (typeof newSettings === 'function') {
+      // Handle functional updates
+      setSettings(prevSettings => {
+        const updatedSettings = newSettings(prevSettings);
+        return {
+          ...prevSettings,
+          ...updatedSettings
+        };
+      });
+    } else {
+      // Handle direct object updates
+      setSettings(prevSettings => ({
+        ...prevSettings,
+        ...newSettings
+      }));
+    }
+  };
+
+  // Update the handleModelChange function
+  const handleModelChange = (modelId: string) => {
+    const selectedModel = availableModels.find(model => model.id === modelId);
+    if (selectedModel) {
+      const updatedSettings = {
+        ...settings,
+        selectedModel,
+        // Adjust steps based on the new provider
+        steps: selectedModel.provider === "together" ? 4 : 30
+      };
+      setSettings(updatedSettings);
+      setSelectedProvider(selectedModel.provider);
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem('image_generation_settings', JSON.stringify(updatedSettings));
+      } catch (e) {
+        console.error('Failed to save settings to localStorage:', e);
+      }
+    }
   };
 
   return (
@@ -227,8 +344,8 @@ export function ImageGenerationInterface() {
                     <MessageCircle className="w-4 h-4 text-zinc-500" />
                     <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Image Prompt</h3>
                   </div>
-                  <Sheet>
-                    <SheetTrigger asChild>
+                  <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                    <DialogTrigger asChild>
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -237,29 +354,18 @@ export function ImageGenerationInterface() {
                         <Sliders className="h-4 w-4 mr-2" />
                         Settings
                       </Button>
-                    </SheetTrigger>
-                    <SheetContent side="right" className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-                      <SheetHeader>
-                        <SheetTitle className="text-zinc-900 dark:text-zinc-100">Image Settings</SheetTitle>
-                        
-                      </SheetHeader>
-                      <ImageSettings 
-                        settings={{
-                          negativePrompt: settings.negativePrompt
-                        }} 
-                        setSettings={(newSettings) => {
-                          if (typeof newSettings === 'function') {
-                            // Handle functional updates (rare case)
-                            const updatedSettings = newSettings({ negativePrompt: settings.negativePrompt });
-                            setNegativePrompt(updatedSettings.negativePrompt);
-                          } else {
-                            // Handle direct object updates (common case)
-                            setNegativePrompt(newSettings.negativePrompt);
-                          }
-                        }}
-                      />
-                    </SheetContent>
-                  </Sheet>
+                    </DialogTrigger>
+                    <ImageSettings 
+                      settings={{
+                        negativePrompt: settings.negativePrompt,
+                        selectedModel: settings.selectedModel,
+                        selectedTemplate: settings.selectedTemplate
+                      }} 
+                      setSettings={updateSettings}
+                      open={isSettingsOpen}
+                      onOpenChange={setIsSettingsOpen}
+                    />
+                  </Dialog>
                 </div>
                 
                 <div className="space-y-2">
