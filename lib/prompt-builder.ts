@@ -71,12 +71,8 @@ interface ReferenceImage {
 // Add reference images configuration
 export const referenceImages: ReferenceImage[] = [
   {
-    path: "/images/image-1747136918321.png",
-    description: "Reference style 1 with vibrant colors and detailed composition"
-  },
-  {
     path: "/images/image-1747136764318.png",
-    description: "Reference style 2 with dramatic lighting and cinematic feel"
+    description: "Reference style - vibrant colors and detailed composition, with dramatic lighting and cinematic feel"
   },
   {
     path: "/images/image-1747141314771.png",

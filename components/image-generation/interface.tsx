@@ -54,6 +54,7 @@ export function ImageGenerationInterface() {
   const [progress, setProgress] = useState(0);
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [inputValue, setInputValue] = useState("");
+  const [isEnhanceEnabled, setIsEnhanceEnabled] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [enhancedPrompt, setEnhancedPrompt] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -265,95 +266,112 @@ export function ImageGenerationInterface() {
     }
   };
 
-  const handleGenerateClick = () => {
-    if (inputValue.trim() && !isLoading) {
-      generateImage(inputValue);
-    }
-  };
+  const handleGenerateClick = async () => {
+    if (!inputValue.trim() || isLoading) return;
+    
+    setIsLoading(true);
+    let finalPrompt = inputValue;
 
-  const enhancePrompt = async () => {
-    if (!inputValue.trim() || isEnhancing) return;
-    
-    setIsEnhancing(true);
-    setError(null);
-    
     try {
-      // Get OpenAI API key from localStorage
-      let apiKey = null;
-      try {
-        const storedKeys = localStorage.getItem('ai_api_keys');
-        if (storedKeys) {
-          const keys = JSON.parse(storedKeys);
-          const activeKey = keys.find((key: any) => 
-            key.isActive && key.provider === "openai"
-          );
-          if (activeKey) {
-            apiKey = activeKey.key;
+      // If enhance is enabled, first enhance the prompt
+      if (isEnhanceEnabled) {
+        setIsEnhancing(true);
+        
+        // Get OpenAI API key from localStorage
+        let apiKey = null;
+        try {
+          const storedKeys = localStorage.getItem('ai_api_keys');
+          if (storedKeys) {
+            const keys = JSON.parse(storedKeys);
+            const activeKey = keys.find((key: any) => 
+              key.isActive && key.provider === "openai"
+            );
+            if (activeKey) {
+              apiKey = activeKey.key;
+            }
           }
+        } catch (e) {
+          console.error('Failed to parse API keys from localStorage:', e);
         }
-      } catch (e) {
-        console.error('Failed to parse API keys from localStorage:', e);
-      }
 
-      if (!apiKey) {
-        setError('Please add and activate an OpenAI API key in settings to use prompt enhancement.');
-        return;
-      }
+        if (!apiKey) {
+          setError('Please add and activate an OpenAI API key in settings to use prompt enhancement.');
+          setIsLoading(false);
+          setIsEnhancing(false);
+          return;
+        }
 
-      const response = await fetch('/api/enhance-prompt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          prompt: inputValue,
-          apiKey: apiKey
-        }),
-      });
+        try {
+          const response = await fetch('/api/enhance-prompt', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              prompt: inputValue,
+              apiKey: apiKey
+            }),
+          });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to enhance prompt');
-      }
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to enhance prompt');
+          }
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader available');
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error('No reader available');
 
-      const decoder = new TextDecoder();
-      let enhancedText = '';
+          const decoder = new TextDecoder();
+          let enhancedText = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(5));
-              if (data.error) {
-                throw new Error(data.error);
-              }
-              enhancedText += data.content;
-              setEnhancedPrompt(enhancedText);
-            } catch (e) {
-              console.error('Error parsing SSE data:', e);
-              if (e instanceof Error && e.message !== 'Unexpected end of JSON input') {
-                throw e;
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(5));
+                  if (data.error) {
+                    throw new Error(data.error);
+                  }
+                  enhancedText += data.content;
+                  setEnhancedPrompt(enhancedText);
+                } catch (e) {
+                  console.error('Error parsing SSE data:', e);
+                  if (e instanceof Error && e.message !== 'Unexpected end of JSON input') {
+                    throw e;
+                  }
+                }
               }
             }
           }
+
+          finalPrompt = enhancedText.trim();
+          if (!finalPrompt) {
+            throw new Error('Enhanced prompt is empty');
+          }
+        } catch (error) {
+          console.error('Error in enhancement process:', error);
+          setError(error instanceof Error ? error.message : 'Failed to enhance prompt. Please try again.');
+          setIsLoading(false);
+          setIsEnhancing(false);
+          return;
         }
+        
+        setIsEnhancing(false);
       }
 
-      setInputValue(enhancedText.trim());
+      // Now generate the image with either the enhanced or original prompt
+      await generateImage(finalPrompt);
     } catch (error) {
-      console.error('Error enhancing prompt:', error);
-      setError(error instanceof Error ? error.message : 'Failed to enhance prompt. Please try again.');
+      console.error('Error in generation process:', error);
+      setError(error instanceof Error ? error.message : 'Failed to process request. Please try again.');
     } finally {
-      setIsEnhancing(false);
+      setIsLoading(false);
     }
   };
 
@@ -475,104 +493,122 @@ export function ImageGenerationInterface() {
                         className="w-full min-h-[200px] max-h-[300px] bg-zinc-50 dark:bg-zinc-800 border-0 resize-none p-4 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 rounded-xl"
                         disabled={isLoading}
                       />
-                      
-                      <div className="absolute bottom-4 right-4 flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            "h-8 bg-white/80 dark:bg-zinc-800/80",
-                            "hover:bg-white dark:hover:bg-zinc-800",
-                            "transition-all duration-200",
-                            isEnhancing && "opacity-70"
-                          )}
-                          onClick={enhancePrompt}
-                          disabled={isEnhancing || !inputValue.trim() || isLoading}
-                        >
-                          {isEnhancing ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Enhancing...
-                            </>
-                          ) : (
-                            <>
-                              <Wand2 className="w-4 h-4 mr-2" />
-                              Enhance
-                            </>
-                          )}
-                        </Button>
-                      </div>
                     </div>
                   </div>
                 
-                  <motion.button
-                    onClick={handleGenerateClick}
-                    disabled={isLoading || !inputValue.trim()}
-                    className={cn(
-                      "w-full h-10 mt-4 relative overflow-hidden",
-                      "flex items-center justify-center gap-2",
-                      "bg-gradient-to-r from-fuchsia-500 to-violet-500",
-                      "text-white text-sm font-medium rounded-xl",
-                      "transition-all duration-200",
-                      "hover:from-fuchsia-600 hover:to-violet-600",
-                      "disabled:opacity-50 disabled:cursor-not-allowed",
-                      "group"
-                    )}
-                    whileTap={{ scale: 0.98 }}
-                    whileHover={{ scale: 1.01 }}
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500 to-violet-500" />
-                        <div className="absolute inset-0 flex items-center justify-center gap-2">
-                          <svg 
-                            className="animate-spin h-4 w-4" 
-                            xmlns="http://www.w3.org/2000/svg" 
-                            fill="none" 
-                            viewBox="0 0 24 24"
-                          >
-                            <circle 
-                              className="opacity-25" 
-                              cx="12" 
-                              cy="12" 
-                              r="10" 
-                              stroke="currentColor" 
-                              strokeWidth="4"
-                            />
-                            <path 
-                              className="opacity-75" 
-                              fill="currentColor" 
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            />
-                          </svg>
-                          <span className="animate-pulse">Generating...</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-fuchsia-500/50 to-violet-500/50"
-                          initial={{ x: "100%" }}
-                          animate={{ x: "0%" }}
-                          transition={{
-                            duration: 0.5,
-                            ease: "easeOut"
-                          }}
-                        />
-                        <Sparkles className="w-4 h-4 relative z-10 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12" />
-                        <span className="relative z-10">Generate Image</span>
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20"
-                          initial={{ scale: 0, opacity: 0 }}
-                          whileHover={{ scale: 1, opacity: 1 }}
-                          transition={{
-                            duration: 0.2,
-                            ease: "easeOut"
-                          }}
-                        />
-                      </>
-                    )}
-                  </motion.button>
+                  <div className="flex gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-10 relative px-4",
+                        "flex items-center gap-2",
+                        "border border-zinc-200 dark:border-zinc-800",
+                        "transition-all duration-200",
+                        isEnhanceEnabled
+                          ? "bg-violet-50 dark:bg-violet-900/30 border-violet-200 dark:border-violet-800"
+                          : "bg-white/80 dark:bg-zinc-800/80 hover:bg-zinc-50 dark:hover:bg-zinc-800",
+                      )}
+                      onClick={() => setIsEnhanceEnabled(!isEnhanceEnabled)}
+                    >
+                      <div className={cn(
+                        "relative flex items-center w-8 h-4 rounded-full transition-colors duration-200",
+                        isEnhanceEnabled 
+                          ? "bg-violet-500" 
+                          : "bg-zinc-200 dark:bg-zinc-700"
+                      )}>
+                        <div className={cn(
+                          "absolute w-3 h-3 rounded-full bg-white transition-transform duration-200 transform",
+                          isEnhanceEnabled ? "translate-x-4" : "translate-x-1"
+                        )} />
+                      </div>
+                      <span className={cn(
+                        "text-sm font-medium",
+                        isEnhanceEnabled 
+                          ? "text-violet-700 dark:text-violet-300" 
+                          : "text-zinc-600 dark:text-zinc-400"
+                      )}>
+                        {isEnhanceEnabled ? "Enhanced" : "Raw"}
+                      </span>
+                      <Wand2 className={cn(
+                        "w-4 h-4",
+                        isEnhanceEnabled 
+                          ? "text-violet-500" 
+                          : "text-zinc-400"
+                      )} />
+                    </Button>
+
+                    <motion.button
+                      onClick={handleGenerateClick}
+                      disabled={isLoading || !inputValue.trim()}
+                      className={cn(
+                        "flex-1 h-10 relative overflow-hidden",
+                        "flex items-center justify-center gap-2",
+                        "bg-gradient-to-r from-fuchsia-500 to-violet-500",
+                        "text-white text-sm font-medium rounded-xl",
+                        "transition-all duration-200",
+                        "hover:from-fuchsia-600 hover:to-violet-600",
+                        "disabled:opacity-50 disabled:cursor-not-allowed",
+                        "group"
+                      )}
+                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ scale: 1.01 }}
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500 to-violet-500" />
+                          <div className="absolute inset-0 flex items-center justify-center gap-2">
+                            <svg 
+                              className="animate-spin h-4 w-4" 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              fill="none" 
+                              viewBox="0 0 24 24"
+                            >
+                              <circle 
+                                className="opacity-25" 
+                                cx="12" 
+                                cy="12" 
+                                r="10" 
+                                stroke="currentColor" 
+                                strokeWidth="4"
+                              />
+                              <path 
+                                className="opacity-75" 
+                                fill="currentColor" 
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                            <span className="animate-pulse">
+                              {isEnhancing ? "Enhancing..." : "Generating..."}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-fuchsia-500/50 to-violet-500/50"
+                            initial={{ x: "100%" }}
+                            animate={{ x: "0%" }}
+                            transition={{
+                              duration: 0.5,
+                              ease: "easeOut"
+                            }}
+                          />
+                          <Sparkles className="w-4 h-4 relative z-10 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12" />
+                          <span className="relative z-10">Generate Image</span>
+                          <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20"
+                            initial={{ scale: 0, opacity: 0 }}
+                            whileHover={{ scale: 1, opacity: 1 }}
+                            transition={{
+                              duration: 0.2,
+                              ease: "easeOut"
+                            }}
+                          />
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
