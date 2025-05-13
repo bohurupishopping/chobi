@@ -42,7 +42,7 @@ export const promptTemplates: PromptTemplate[] = [
     "description": "A vibrant, ultra-detailed Indian anime-inspired style with cinematic composition, showcasing modern Indian characters in contemporary and regional attire, blending cultural authenticity with dynamic anime artistry",
     "template": {
       "style": "The illustration is rendered in a hyper-detailed, cinematic Indian anime-inspired style, fusing modern Indian fashion with cutting-edge anime techniques. Characters are depicted in expressive, dynamic poses with fluid, stylized linework that conveys emotion and movement. Characters wear modern-Indian attire such as tailored pants, stylish shirts, vibrant sarees, or contemporary local dresses, reflecting urban and rural Indian fashion with a nod to cultural elegance. The color palette is vibrant yet balanced, featuring jewel-toned hues inspired by Indian textiles and festivals, with luminous highlights and velvety shadows. Textures—such as crisp cotton fabrics, flowing silk sarees, and lifelike skin—are rendered with meticulous detail, enhancing realism. Visual effects like radiant energy, swirling flames, or ethereal auras are depicted with vibrant, kinetic brushwork, incorporating motion blur and particle effects for a sense of vitality and power",
-      "background": "The background is a rich, atmospheric setting that complements the modern Indian vibe—think bustling urban streets at twilight, serene rural landscapes with mustard fields, or vibrant festival markets. It’s rendered with a subtle bokeh effect and shallow depth of field to keep the focus on the characters. Environmental details, like drifting flower petals, glowing streetlights, or shimmering monsoon droplets, add a poetic touch. Strategic light sources—neon signs, golden sunset glow, or colorful festival lamps—create dramatic silhouettes and enhance depth with volumetric lighting and soft god rays.",
+      "background": "The background is a rich, atmospheric setting that complements the modern Indian vibe—think bustling urban streets at twilight, serene rural landscapes with mustard fields, or vibrant festival markets. It's rendered with a subtle bokeh effect and shallow depth of field to keep the focus on the characters. Environmental details, like drifting flower petals, glowing streetlights, or shimmering monsoon droplets, add a poetic touch. Strategic light sources—neon signs, golden sunset glow, or colorful festival lamps—create dramatic silhouettes and enhance depth with volumetric lighting and soft god rays.",
       "cinematicElements": "The artwork is framed in a widescreen 16:9 aspect ratio with a shallow depth of field for a theatrical, immersive experience. Lighting is high-contrast and emotive, using techniques like warm streetlamp glow, vibrant festival lighting, or soft natural rim lighting to sculpt characters and evoke mood. Shadows are deep and defined, adding three-dimensionality, while environmental effects like urban haze, confetti bursts, or gentle rain enhance drama. Subtle lens flares or light leaks are sparingly used to elevate the cinematic polish.",
       "focalLength": "The scene is captured with the equivalent of a medium telephoto lens (approximately 85mm–135mm full-frame), delivering a cinematic compression effect that isolates characters, flattens perspective for a painterly quality, and fosters an intimate emotional connection with the viewer.",
       "negativePrompt": "blurry, low quality, distorted, deformed, unnatural proportions, bad anatomy, out of frame, cropped, low resolution, amateurish, mutated, extra limbs, poorly drawn facial features, poorly drawn hands, text artifacts, watermarks, signatures, grainy textures, excessive noise, oversaturated colors, overexposed highlights, unbalanced composition, unrealistic lighting, outdated or stereotypical costumes, god-like armor, overly fantastical elements"
@@ -51,19 +51,43 @@ export const promptTemplates: PromptTemplate[] = [
   {
     "id": "indian-anime-cinematic-normal",
     "name": "Indian Animation Cinematic Normal",
-  "description": "A breathtaking, ultra-detailed Indian anime-inspired style with grandiose cinematic composition, blending vibrant cultural heritage with dynamic anime artistry",
-  "template": {
-    "style": "The illustration is crafted in a hyper-detailed, cinematic Indian anime-inspired style, seamlessly merging traditional Indian artistry with cutting-edge anime techniques. It emphasizes fluid, expressive character designs, bold and dynamic poses, and intricate, stylized linework that captures emotional intensity. Characters wear modern Indian attire such as tailored pants, stylish shirts, vibrant sarees, or contemporary local dresses, reflecting urban and rural Indian fashion with a nod to cultural elegance. The color palette is vibrant yet balanced, featuring jewel-toned hues inspired by Indian textiles and festivals, with luminous highlights and velvety shadows. Textures—such as crisp cotton fabrics, flowing silk sarees, and lifelike skin—are rendered with meticulous detail, enhancing realism. Visual effects like radiant energy, swirling flames, or ethereal auras are depicted with vibrant, kinetic brushwork, incorporating motion blur and particle effects for a sense of vitality and power.",
-    "background": "The background is a rich, atmospheric tapestry that amplifies the scene’s emotional tone. It features a dark, evocative setting—such as a moonlit ancient temple, a bustling bazaar at dusk, or a misty Himalayan peak—rendered with a subtle bokeh effect and shallow depth of field to keep the focus on the subject. Delicate environmental details, like drifting lotus petals, glowing fireflies, or shimmering dust motes, add a mystical quality. Strategic light sources, such as flickering torches, celestial moonlight, or vibrant festival lanterns, create dramatic silhouettes and enhance depth with volumetric lighting and soft god rays.",
-    "cinematicElements": "The artwork is framed in a widescreen 16:9 aspect ratio, employing a shallow depth of field to create a theatrical, immersive experience. Lighting is high-contrast and purposeful, utilizing techniques like golden-hour rim lighting, vibrant festival glows, or intense fiery backlighting to sculpt the subject and evoke emotion. Shadows are deep and sculpted, adding three-dimensionality, while environmental effects—such as swirling incense smoke, radiant heat haze, or sparkling magical particles—heighten the drama. Subtle lens flares or chromatic aberrations are sparingly used to enhance the cinematic polish.",
-    "focalLength": "The scene is captured with the equivalent of a medium telephoto lens (approximately 85mm–135mm full-frame), delivering a cinematic compression effect that isolates the subject, flattens perspective for a painterly quality, and fosters an intimate emotional connection with the viewer.",
-    "negativePrompt": "blurry, low quality, distorted, deformed, unnatural proportions, bad anatomy, out of frame, cropped, low resolution, amateurish, mutated, extra limbs, poorly drawn facial features, poorly drawn hands, text artifacts, watermarks, signatures, grainy textures, excessive noise, oversaturated colors, overexposed highlights, unbalanced composition, unrealistic lighting"
+    "description": "A breathtaking, ultra-detailed Indian anime-inspired style with grandiose cinematic composition, blending vibrant cultural heritage with dynamic anime artistry",
+    "template": {
+      "style": "The illustration is crafted in a hyper-detailed, cinematic Indian anime-inspired style, seamlessly merging traditional Indian artistry with cutting-edge anime techniques. It emphasizes fluid, expressive character designs, bold and dynamic poses, and intricate, stylized linework that captures emotional intensity. Characters wear modern Indian attire such as tailored pants, stylish shirts, vibrant sarees, or contemporary local dresses, reflecting urban and rural Indian fashion with a nod to cultural elegance. The color palette is vibrant yet balanced, featuring jewel-toned hues inspired by Indian textiles and festivals, with luminous highlights and velvety shadows. Textures—such as crisp cotton fabrics, flowing silk sarees, and lifelike skin—are rendered with meticulous detail, enhancing realism. Visual effects like radiant energy, swirling flames, or ethereal auras are depicted with vibrant, kinetic brushwork, incorporating motion blur and particle effects for a sense of vitality and power.",
+      "background": "The background is a rich, atmospheric tapestry that amplifies the scene's emotional tone. It features a dark, evocative setting—such as a moonlit ancient temple, a bustling bazaar at dusk, or a misty Himalayan peak—rendered with a subtle bokeh effect and shallow depth of field to keep the focus on the subject. Delicate environmental details, like drifting lotus petals, glowing fireflies, or shimmering dust motes, add a mystical quality. Strategic light sources, such as flickering torches, celestial moonlight, or vibrant festival lanterns, create dramatic silhouettes and enhance depth with volumetric lighting and soft god rays.",
+      "cinematicElements": "The artwork is framed in a widescreen 16:9 aspect ratio, employing a shallow depth of field to create a theatrical, immersive experience. Lighting is high-contrast and purposeful, utilizing techniques like golden-hour rim lighting, vibrant festival glows, or intense fiery backlighting to sculpt the subject and evoke emotion. Shadows are deep and sculpted, adding three-dimensionality, while environmental effects—such as swirling incense smoke, radiant heat haze, or sparkling magical particles—heighten the drama. Subtle lens flares or chromatic aberrations are sparingly used to enhance the cinematic polish.",
+      "focalLength": "The scene is captured with the equivalent of a medium telephoto lens (approximately 85mm–135mm full-frame), delivering a cinematic compression effect that isolates the subject, flattens perspective for a painterly quality, and fosters an intimate emotional connection with the viewer.",
+      "negativePrompt": "blurry, low quality, distorted, deformed, unnatural proportions, bad anatomy, out of frame, cropped, low resolution, amateurish, mutated, extra limbs, poorly drawn facial features, poorly drawn hands, text artifacts, watermarks, signatures, grainy textures, excessive noise, oversaturated colors, overexposed highlights, unbalanced composition, unrealistic lighting"
+    }
   }
-}
-  // Add more templates here as needed
 ];
 
-export function buildPrompt(sceneDescription: string, templateId: string = "no-template"): { prompt: string; negativePrompt: string } {
+// Add new interface for reference images
+interface ReferenceImage {
+  path: string;
+  description: string;
+}
+
+// Add reference images configuration
+export const referenceImages: ReferenceImage[] = [
+  {
+    path: "/images/image-1747136918321.png",
+    description: "Reference style 1 with vibrant colors and detailed composition"
+  },
+  {
+    path: "/images/image-1747136764318.png",
+    description: "Reference style 2 with dramatic lighting and cinematic feel"
+  },
+  {
+    path: "/images/image-1747141314771.png",
+    description: "Reference style 3 with balanced composition and rich details"
+  }
+];
+
+// Add fixed seed for consistency
+export const FIXED_SEED = 42;
+
+export function buildPrompt(sceneDescription: string, templateId: string = "no-template"): { prompt: string; negativePrompt: string; seed: number; referenceImages: string[] } {
   const template = promptTemplates.find(t => t.id === templateId);
   if (!template) {
     throw new Error(`Template ${templateId} not found`);
@@ -71,16 +95,23 @@ export function buildPrompt(sceneDescription: string, templateId: string = "no-t
 
   const { style, background, cinematicElements, focalLength } = template.template;
 
-  // If using no-template, return the scene description directly
+  // Get reference image paths
+  const refImagePaths = referenceImages.map(img => img.path);
+
+  // If using no-template, return the scene description with style reference
   if (templateId === "no-template") {
     return {
-      prompt: `${sceneDescription}, best quality, highly detailed`,
-      negativePrompt: template.template.negativePrompt
+      prompt: `Create an image that matches the following description while maintaining a consistent style similar to the provided reference images: ${sceneDescription}, best quality, highly detailed`,
+      negativePrompt: template.template.negativePrompt,
+      seed: FIXED_SEED,
+      referenceImages: refImagePaths
     };
   }
 
-  // Otherwise, build the enhanced prompt using the template
+  // Build the enhanced prompt using the template and style reference
   const enhancedPrompt = `
+Create an image that matches the following description while maintaining a consistent style similar to the provided reference images:
+
 Scene: ${sceneDescription}
 
 Style: ${style}
@@ -92,10 +123,14 @@ Cinematic Elements: ${cinematicElements}
 Technical Details: ${focalLength}
 
 Additional Requirements: masterpiece, best quality, highly detailed, ultra sharp focus, 8k UHD, professional photography, artistic composition
+
+Important: Maintain the same artistic style, color palette, and composition approach as shown in the reference images while incorporating the specific scene requirements above.
 `.trim();
 
   return {
     prompt: enhancedPrompt,
-    negativePrompt: template.template.negativePrompt
+    negativePrompt: template.template.negativePrompt,
+    seed: FIXED_SEED,
+    referenceImages: refImagePaths
   };
 } 

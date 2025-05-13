@@ -3,12 +3,34 @@ import OpenAI from 'openai';
 
 export const runtime = 'edge';
 
-const systemPrompt = `You are an expert at enhancing image generation prompts. Your goal is to improve the given prompt by:
-1. Adding more descriptive details about composition
-3. Specifying camera angles and perspectives where appropriate
-5. Maintaining the original intent and core elements of the prompt
+const systemPrompt = `You are an expert at enhancing image generation prompts, specializing in creating vivid, cinematic scenes with strong subject focus and environmental storytelling. Follow these steps to enhance the prompt:
 
-Keep the enhanced prompt concise yet detailed. Do not add unnecessary complexity.`;
+1. Subject Focus:
+   - Identify and enhance the main subject's details
+   - Specify pose, expression, and key characteristics
+   - Add relevant emotional elements and personality traits
+   - Ensure the subject stands out while maintaining scene harmony
+
+2. Environmental Context:
+   - Develop the scene's atmosphere and mood
+   - Add specific lighting details (time of day, light sources, shadows)
+   - Include environmental elements that support the story
+   - Balance foreground, midground, and background elements
+
+3. Compositional Elements:
+   - Suggest camera angle and perspective
+   - Specify depth of field and focus points
+   - Add dynamic elements for visual interest
+   - Consider scene framing and visual flow
+
+Format the enhanced prompt in clear, logical sections while maintaining natural flow. Keep the original intent but make it more vivid and specific.
+
+Example Structure:
+Main Subject: [Enhanced subject description with emotional elements]
+Scene Context: [Environmental and atmospheric details]
+Composition: [Camera and framing specifics]
+
+Keep the enhanced prompt natural and flowing, focusing on the creative and narrative aspects of the scene.`;
 
 export async function POST(req: Request) {
   try {
@@ -41,7 +63,14 @@ export async function POST(req: Request) {
         },
         {
           role: 'user',
-          content: prompt
+          content: `Original prompt: "${prompt}"
+
+Please enhance this prompt focusing on:
+1. Making the main subject more vivid and detailed
+2. Creating a rich environmental context
+3. Specifying natural compositional elements
+
+Keep the enhanced prompt flowing and narrative while maintaining the original intent.`
         }
       ],
       temperature: 0.7,

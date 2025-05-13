@@ -1,6 +1,8 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import { put } from '@vercel/blob';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Maximum prompt length that Gemini can handle effectively
 const MAX_PROMPT_LENGTH = 4000;
@@ -18,9 +20,16 @@ function truncatePrompt(prompt: string): string {
   return prompt;
 }
 
+// Function to read and encode image to base64
+async function getImageAsBase64(imagePath: string): Promise<string> {
+  const fullPath = path.join(process.cwd(), 'public', imagePath);
+  const imageBuffer = await fs.promises.readFile(fullPath);
+  return imageBuffer.toString('base64');
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, negativePrompt, seed, steps, apiKey } = await request.json();
+    const { prompt, negativePrompt, seed, steps, apiKey, referenceImages } = await request.json();
 
     if (!prompt) {
       return NextResponse.json(
@@ -54,10 +63,9 @@ export async function POST(request: NextRequest) {
     // Build the complete prompt with enhancements and appropriate negative prompt handling
     let enhancedPrompt = `${processedPrompt}. ${qualityEnhancement}`;
     
-    // Add randomization parameters to ensure unique generations
-    const randomSeed = seed || Math.floor(Math.random() * 1000000);
+    // Use fixed seed for consistency if provided, otherwise use the default
+    const fixedSeed = seed || 42;
     const timestamp = Date.now();
-    enhancedPrompt = `${enhancedPrompt} [Seed: ${randomSeed}, Timestamp: ${timestamp}]`;
 
     // Add the negative prompt as a separate instruction
     const negativePromptText = processedNegativePrompt ? 
@@ -67,24 +75,40 @@ export async function POST(request: NextRequest) {
     // Configuration options for the generation
     const configOptions: any = {
       responseModalities: [Modality.TEXT, Modality.IMAGE],
-      temperature: 0.6, // Add some randomness to the generation
-      topK: 40,        // Increase variety in the output
-      topP: 0.85,      // Allow more creative generations
+      temperature: 0.3, // Lower temperature for more consistent results
+      topK: 20,        // Lower topK for more focused generations
+      topP: 0.8,       // Adjusted for balance between creativity and consistency
+      seed: fixedSeed, // Use fixed seed for consistency
     };
-    
-    if (randomSeed) {
-      configOptions.seed = randomSeed;
-    }
     
     if (steps) {
       configOptions.steps = steps;
     }
 
     try {
-      // Generate the image
+      // Prepare reference images if provided
+      const contents: any[] = [{ text: enhancedPrompt }];
+
+      if (referenceImages && referenceImages.length > 0) {
+        for (const imgPath of referenceImages) {
+          try {
+            const base64Image = await getImageAsBase64(imgPath);
+            contents.push({
+              inlineData: {
+                mimeType: "image/png",
+                data: base64Image
+              }
+            });
+          } catch (error) {
+            console.error(`Error loading reference image ${imgPath}:`, error);
+          }
+        }
+      }
+
+      // Generate the image with reference images
       const model = ai.models.generateContent({
         model: "gemini-2.0-flash-preview-image-generation",
-        contents: enhancedPrompt,
+        contents,
         config: {
           ...configOptions,
           negativePrompt: negativePromptText,
@@ -124,7 +148,7 @@ export async function POST(request: NextRequest) {
       
       // Store the image in Vercel Blob
       const buffer = Buffer.from(imageData, 'base64');
-      const filename = `generated-image-16x9-${timestamp}-${randomSeed}.png`;
+      const filename = `generated-image-16x9-${timestamp}-${fixedSeed}.png`;
       
       const blob = await put(filename, buffer, {
         contentType: 'image/png',
@@ -139,13 +163,14 @@ export async function POST(request: NextRequest) {
         prompt: processedPrompt,
         timestamp: timestamp,
         metadata: {
-          seed: randomSeed,
+          seed: fixedSeed,
           steps: steps,
           promptLength: processedPrompt.length,
           wasPromptTruncated: processedPrompt.length < prompt.length,
           temperature: configOptions.temperature,
           topK: configOptions.topK,
-          topP: configOptions.topP
+          topP: configOptions.topP,
+          usedReferenceImages: referenceImages
         }
       });
       
