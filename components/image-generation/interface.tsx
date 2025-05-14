@@ -418,8 +418,8 @@ export function ImageGenerationInterface() {
   };
 
   return (
-    <div className="w-full h-full px-4 md:px-6 lg:px-8 py-4 md:py-6">
-      <div className="group relative overflow-hidden w-full h-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
+    <div className="w-full h-full px-4 md:px-6 lg:px-8 py-4 md:py-6 animate-in fade-in-0 duration-500">
+      <div className="group relative overflow-hidden w-full h-full bg-card/50 dark:bg-card/50 border border-border/50 dark:border-border/50 rounded-2xl backdrop-blur-xl shadow-xl">
         <div className="w-full h-full grid grid-cols-1 lg:grid-cols-4 gap-4 p-4">
           <div className="lg:col-span-3 w-full flex flex-col gap-4">
             <ImagePreview
@@ -442,19 +442,19 @@ export function ImageGenerationInterface() {
           </div>
           
           <div className="w-full flex flex-col gap-4">
-            <Card className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 h-auto">
+            <Card className="rounded-xl border border-border/50 dark:border-border/50 bg-card/50 dark:bg-card/50 backdrop-blur-xl h-auto">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4 text-zinc-500" />
-                    <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Image Prompt</h3>
+                    <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                    <h3 className="text-sm font-medium text-foreground">Image Prompt</h3>
                   </div>
                   <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                     <DialogTrigger asChild>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700"
+                        className="rounded-lg bg-background/50 dark:bg-background/50 text-foreground border-border/50"
                       >
                         <Sliders className="h-4 w-4 mr-2" />
                         Settings
@@ -490,7 +490,7 @@ export function ImageGenerationInterface() {
                         placeholder="Describe your image in detail (e.g., 'a serene lake at sunset with mountains in the background')..."
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        className="w-full min-h-[200px] max-h-[300px] bg-zinc-50 dark:bg-zinc-800 border-0 resize-none p-4 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 rounded-xl"
+                        className="w-full min-h-[200px] max-h-[300px] bg-background/50 dark:bg-background/50 border-border/50 resize-none p-4 text-foreground placeholder:text-muted-foreground rounded-xl"
                         disabled={isLoading}
                       />
                     </div>
@@ -503,19 +503,19 @@ export function ImageGenerationInterface() {
                       className={cn(
                         "h-10 relative px-4",
                         "flex items-center gap-2",
-                        "border border-zinc-200 dark:border-zinc-800",
+                        "border border-border/50",
                         "transition-all duration-200",
                         isEnhanceEnabled
-                          ? "bg-violet-50 dark:bg-violet-900/30 border-violet-200 dark:border-violet-800"
-                          : "bg-white/80 dark:bg-zinc-800/80 hover:bg-zinc-50 dark:hover:bg-zinc-800",
+                          ? "bg-primary/10 dark:bg-primary/20 border-primary/20 dark:border-primary/30"
+                          : "bg-background/50 dark:bg-background/50 hover:bg-accent/50 dark:hover:bg-accent/50",
                       )}
                       onClick={() => setIsEnhanceEnabled(!isEnhanceEnabled)}
                     >
                       <div className={cn(
                         "relative flex items-center w-8 h-4 rounded-full transition-colors duration-200",
                         isEnhanceEnabled 
-                          ? "bg-violet-500" 
-                          : "bg-zinc-200 dark:bg-zinc-700"
+                          ? "bg-primary" 
+                          : "bg-muted dark:bg-muted"
                       )}>
                         <div className={cn(
                           "absolute w-3 h-3 rounded-full bg-white transition-transform duration-200 transform",
@@ -525,16 +525,16 @@ export function ImageGenerationInterface() {
                       <span className={cn(
                         "text-sm font-medium",
                         isEnhanceEnabled 
-                          ? "text-violet-700 dark:text-violet-300" 
-                          : "text-zinc-600 dark:text-zinc-400"
+                          ? "text-primary dark:text-primary" 
+                          : "text-muted-foreground"
                       )}>
                         {isEnhanceEnabled ? "Enhanced" : "Raw"}
                       </span>
                       <Wand2 className={cn(
                         "w-4 h-4",
                         isEnhanceEnabled 
-                          ? "text-violet-500" 
-                          : "text-zinc-400"
+                          ? "text-primary" 
+                          : "text-muted-foreground"
                       )} />
                     </Button>
 
@@ -544,10 +544,10 @@ export function ImageGenerationInterface() {
                       className={cn(
                         "flex-1 h-10 relative overflow-hidden",
                         "flex items-center justify-center gap-2",
-                        "bg-gradient-to-r from-fuchsia-500 to-violet-500",
+                        "bg-gradient-to-r from-primary to-primary/80",
                         "text-white text-sm font-medium rounded-xl",
                         "transition-all duration-200",
-                        "hover:from-fuchsia-600 hover:to-violet-600",
+                        "hover:from-primary/90 hover:to-primary/70",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
                         "group"
                       )}
@@ -556,7 +556,7 @@ export function ImageGenerationInterface() {
                     >
                       {isLoading ? (
                         <>
-                          <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500 to-violet-500" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80" />
                           <div className="absolute inset-0 flex items-center justify-center gap-2">
                             <svg 
                               className="animate-spin h-4 w-4" 
@@ -586,7 +586,7 @@ export function ImageGenerationInterface() {
                       ) : (
                         <>
                           <motion.div
-                            className="absolute inset-0 bg-gradient-to-r from-fuchsia-500/50 to-violet-500/50"
+                            className="absolute inset-0 bg-gradient-to-r from-primary/50 to-primary/30"
                             initial={{ x: "100%" }}
                             animate={{ x: "0%" }}
                             transition={{
@@ -597,7 +597,7 @@ export function ImageGenerationInterface() {
                           <Sparkles className="w-4 h-4 relative z-10 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12" />
                           <span className="relative z-10">Generate Image</span>
                           <motion.div
-                            className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20"
+                            className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/10"
                             initial={{ scale: 0, opacity: 0 }}
                             whileHover={{ scale: 1, opacity: 1 }}
                             transition={{
