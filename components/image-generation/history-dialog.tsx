@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { 
   Trash2, 
@@ -14,7 +15,9 @@ import {
   ExternalLink,
   ImageIcon,
   Info,
-  CheckCircle
+  CheckCircle,
+  Square,
+  CheckSquare
 } from "lucide-react";
 
 interface HistoryImage {
@@ -44,6 +47,8 @@ export function HistoryDialog({
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"all" | "current">("current");
   const [selectedImage, setSelectedImage] = useState<HistoryImage | null>(null);
+  const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   // Fetch images from blob storage
   const fetchImages = async () => {
@@ -72,6 +77,9 @@ export function HistoryDialog({
   useEffect(() => {
     if (open) {
       fetchImages();
+      // Reset selection state when dialog opens
+      setSelectedImageIds(new Set());
+      setIsSelectionMode(false);
     }
   }, [open]);
 
@@ -95,6 +103,18 @@ export function HistoryDialog({
 
       // Refresh the image list
       fetchImages();
+      
+      // Remove from selected images if it was selected
+      if (selectedImageIds.has(id)) {
+        const newSelectedIds = new Set(selectedImageIds);
+        newSelectedIds.delete(id);
+        setSelectedImageIds(newSelectedIds);
+      }
+      
+      // Clear selected image if it was the one being viewed
+      if (selectedImage?.id === id) {
+        setSelectedImage(null);
+      }
     } catch (err) {
       console.error('Error deleting image:', err);
     }
@@ -116,13 +136,62 @@ export function HistoryDialog({
 
       // Refresh the image list
       fetchImages();
+      // Reset selection state
+      setSelectedImageIds(new Set());
+      setSelectedImage(null);
     } catch (err) {
       console.error('Error clearing history:', err);
     }
   };
 
-  const handleImageClick = (image: HistoryImage) => {
-    setSelectedImage(image);
+  const handleImageClick = (image: HistoryImage, e: React.MouseEvent) => {
+    if (isSelectionMode) {
+      handleImageSelection(image.id, e);
+    } else {
+      setSelectedImage(image);
+    }
+  };
+
+  const handleImageSelection = (imageId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    const newSelectedIds = new Set(selectedImageIds);
+    if (newSelectedIds.has(imageId)) {
+      newSelectedIds.delete(imageId);
+    } else {
+      newSelectedIds.add(imageId);
+    }
+    setSelectedImageIds(newSelectedIds);
+  };
+
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    if (!isSelectionMode) {
+      // If entering selection mode, clear the selected detail image
+      setSelectedImage(null);
+    } else {
+      // If exiting selection mode, clear all selections
+      setSelectedImageIds(new Set());
+    }
+  };
+
+  const selectAll = () => {
+    const allIds = filteredImages.map(img => img.id);
+    setSelectedImageIds(new Set(allIds));
+  };
+
+  const deselectAll = () => {
+    setSelectedImageIds(new Set());
+  };
+
+  const handleDownloadSelected = () => {
+    // Find all selected images
+    const imagesToDownload = images.filter(img => selectedImageIds.has(img.id));
+    
+    // Download each image
+    imagesToDownload.forEach(image => {
+      downloadImage(image);
+    });
   };
 
   const handleUseImage = () => {
@@ -132,13 +201,26 @@ export function HistoryDialog({
     }
   };
 
+  const downloadImage = (image: HistoryImage) => {
+    fetch(image.blobUrl)
+      .then(response => response.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${image.projectName}-${image.sequenceNumber}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(error => {
+        console.error("Error downloading image:", error);
+      });
+  };
+
   const handleDownload = (image: HistoryImage) => {
-    const link = document.createElement("a");
-    link.href = image.blobUrl;
-    link.download = `${image.projectName}-${image.sequenceNumber}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadImage(image);
   };
 
   const handleOpenInNewTab = (image: HistoryImage) => {
@@ -160,6 +242,8 @@ export function HistoryDialog({
     return acc;
   }, {} as Record<string, HistoryImage[]>);
 
+  const selectedCount = selectedImageIds.size;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[1200px] max-h-[90vh] p-0 gap-0 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
@@ -170,40 +254,100 @@ export function HistoryDialog({
               <DialogTitle className="text-xl font-semibold">Image History</DialogTitle>
             </div>
             <div className="flex items-center gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 px-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                      onClick={fetchImages}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Refresh
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Refresh image history</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {isSelectionMode ? (
+                <>
+                  <Badge variant="secondary" className="mr-2">
+                    {selectedCount} selected
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3"
+                    onClick={selectAll}
+                    disabled={filteredImages.length === 0}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3"
+                    onClick={deselectAll}
+                    disabled={selectedCount === 0}
+                  >
+                    Deselect All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3"
+                    onClick={handleDownloadSelected}
+                    disabled={selectedCount === 0}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Selected
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 px-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                          onClick={fetchImages}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Refresh
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Refresh image history</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 px-3 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                      onClick={handleClearHistory}
-                      disabled={images.length === 0}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Clear All
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Delete all history</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 px-3 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          onClick={handleClearHistory}
+                          disabled={images.length === 0}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Clear All
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete all history</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </>
+              )}
+
+              <Button
+                variant={isSelectionMode ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "h-9 px-3",
+                  isSelectionMode && "bg-blue-600 hover:bg-blue-700 text-white"
+                )}
+                onClick={toggleSelectionMode}
+              >
+                {isSelectionMode ? (
+                  <>
+                    <CheckSquare className="h-4 w-4 mr-2" />
+                    Exit Selection
+                  </>
+                ) : (
+                  <>
+                    <Square className="h-4 w-4 mr-2" />
+                    Select Multiple
+                  </>
+                )}
+              </Button>
             </div>
           </div>
 
@@ -257,10 +401,12 @@ export function HistoryDialog({
                           {projectImages.map((image) => (
                             <div
                               key={image.id}
-                              onClick={() => handleImageClick(image)}
+                              onClick={(e) => handleImageClick(image, e)}
                               className={cn(
                                 "relative group cursor-pointer rounded-lg overflow-hidden border-2 shadow-sm hover:shadow-md transition-all",
-                                selectedImage?.id === image.id
+                                isSelectionMode && selectedImageIds.has(image.id)
+                                  ? "border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-900"
+                                  : !isSelectionMode && selectedImage?.id === image.id
                                   ? "border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-900"
                                   : "border-transparent hover:border-zinc-300 dark:hover:border-zinc-600"
                               )}
@@ -278,17 +424,42 @@ export function HistoryDialog({
                                   <p className="text-white text-xs font-medium">#{image.sequenceNumber}</p>
                                 </div>
                                 <div className="absolute top-2 right-2 flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 bg-black/70 text-white rounded-full hover:bg-red-500/90 transition-colors"
-                                    onClick={(e) => handleRemoveImage(image.id, e)}
-                                  >
-                                    <X className="h-3.5 w-3.5" />
-                                  </Button>
+                                  {isSelectionMode ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className={cn(
+                                        "h-7 w-7 bg-black/70 text-white rounded-full transition-colors",
+                                        selectedImageIds.has(image.id) ? "bg-blue-500/90" : "hover:bg-blue-500/90"
+                                      )}
+                                      onClick={(e) => handleImageSelection(image.id, e)}
+                                    >
+                                      {selectedImageIds.has(image.id) ? (
+                                        <CheckCircle className="h-3.5 w-3.5" />
+                                      ) : (
+                                        <Square className="h-3.5 w-3.5" />
+                                      )}
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 bg-black/70 text-white rounded-full hover:bg-red-500/90 transition-colors"
+                                      onClick={(e) => handleRemoveImage(image.id, e)}
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
-                              {selectedImage?.id === image.id && (
+                              {isSelectionMode && selectedImageIds.has(image.id) && (
+                                <div className="absolute top-2 left-2">
+                                  <div className="bg-blue-500 text-white p-1 rounded-full">
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                  </div>
+                                </div>
+                              )}
+                              {!isSelectionMode && selectedImage?.id === image.id && (
                                 <div className="absolute top-2 left-2">
                                   <div className="bg-blue-500 text-white p-1 rounded-full">
                                     <CheckCircle className="h-3.5 w-3.5" />
@@ -313,7 +484,7 @@ export function HistoryDialog({
           </div>
 
           <div className="w-1/3 border-l border-zinc-200 dark:border-zinc-700 pl-6">
-            {selectedImage ? (
+            {selectedImage && !isSelectionMode ? (
               <div className="space-y-5">
                 <div className="aspect-video w-full rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800 shadow-md">
                   <img
@@ -370,11 +541,47 @@ export function HistoryDialog({
                   </div>
                 </div>
               </div>
+            ) : isSelectionMode && selectedCount > 0 ? (
+              <div className="space-y-5">
+                <div className="aspect-video w-full rounded-lg overflow-hidden bg-zinc-50 dark:bg-zinc-800/50 border border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                  <div className="text-center">
+                    <CheckSquare className="h-10 w-10 mx-auto mb-3 opacity-70 text-blue-500" />
+                    <Badge variant="secondary" className="text-md px-3 py-1.5">
+                      {selectedCount} images selected
+                    </Badge>
+                  </div>
+                </div>
+                <div className="space-y-3 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 flex items-center">
+                    <Info className="h-4 w-4 mr-2 text-zinc-400" />
+                    Bulk Actions
+                  </h4>
+                  <div className="space-y-2">
+                    <Button
+                      onClick={handleDownloadSelected}
+                      className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download All Selected
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700 mt-16">
-                <ImageIcon className="h-10 w-10 mb-3 opacity-30 text-zinc-400" />
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">No image selected</p>
-                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">Click on an image to view details</p>
+                {isSelectionMode ? (
+                  <>
+                    <CheckSquare className="h-10 w-10 mb-3 opacity-30 text-zinc-400" />
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">No images selected</p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">Select images to perform bulk actions</p>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="h-10 w-10 mb-3 opacity-30 text-zinc-400" />
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">No image selected</p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">Click on an image to view details</p>
+                  </>
+                )}
               </div>
             )}
           </div>
