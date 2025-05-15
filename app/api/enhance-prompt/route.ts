@@ -18,10 +18,12 @@ const systemPrompt = `You are an expert at enhancing image generation prompts, s
    - Balance foreground, midground, and background elements
 
 3. Compositional Elements:
-   - Suggest camera angle and perspective
+   - Suggest camera angle and perspective (example : top view, side view, front view, back view, etc.)
    - Specify depth of field and focus points
    - Add dynamic elements for visual interest
    - Consider scene framing and visual flow
+   - Add a description of the scene in the form of a story
+   - camera lens focal length (example : 35mm, 50mm, 85mm, 135mm, etc.)
 
 Format the enhanced prompt in clear, logical sections while maintaining natural flow. Keep the original intent but make it more vivid and specific.
 
@@ -73,7 +75,7 @@ Please enhance this prompt focusing on:
 Keep the enhanced prompt flowing and narrative while maintaining the original intent.`
         }
       ],
-      temperature: 0.7,
+      temperature: 0.6,
       stream: true
     });
 
