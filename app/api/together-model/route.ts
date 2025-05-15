@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Together from "together-ai";
+import { put, list } from "@vercel/blob";
 
 // Maximum prompt length that Together AI can handle effectively
 const MAX_PROMPT_LENGTH = 4000;
@@ -18,13 +19,41 @@ function truncatePrompt(prompt: string): string {
   return prompt;
 }
 
+async function getNextSequenceNumber(projectName: string): Promise<number> {
+  try {
+    const { blobs } = await list();
+    const projectImages = blobs.filter(blob => 
+      blob.pathname.startsWith(`${projectName}-`)
+    );
+    
+    if (projectImages.length === 0) return 1;
+    
+    const numbers = projectImages.map(blob => {
+      const match = blob.pathname.match(new RegExp(`${projectName}-(\\d+)`));
+      return match ? parseInt(match[1], 10) : 0;
+    });
+    
+    return Math.max(...numbers) + 1;
+  } catch (error) {
+    console.error('Error getting sequence number:', error);
+    return Date.now(); // Fallback to timestamp if error
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, negativePrompt, seed, steps, width, height, model, apiKey } = await request.json();
+    const { prompt, negativePrompt, seed, steps, width, height, model, apiKey, projectName } = await request.json();
 
     if (!prompt) {
       return NextResponse.json(
         { error: 'Prompt is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!projectName) {
+      return NextResponse.json(
+        { error: 'Project name is required' },
         { status: 400 }
       );
     }
@@ -83,12 +112,28 @@ export async function POST(request: NextRequest) {
       
       // Create a base64 data URL from the image data
       const base64ImageData = `data:image/png;base64,${imageData}`;
+
+      // Get the next sequence number for this project
+      const sequenceNumber = await getNextSequenceNumber(projectName);
+      
+      // Create the filename with project name and sequence number
+      const filename = `${projectName}-${sequenceNumber}.png`;
+      
+      // Store the image in Vercel Blob
+      const buffer = Buffer.from(imageData, 'base64');
+      const blob = await put(filename, buffer, {
+        contentType: 'image/png',
+        access: 'public',
+      });
       
       // Return the response with additional metadata
       return NextResponse.json({
         imageData: base64ImageData,
+        blobUrl: blob.url,
         text: "Image generated successfully with Together AI",
         prompt: processedPrompt,
+        projectName,
+        sequenceNumber,
         timestamp: Date.now(),
         metadata: {
           width: width || defaultWidth,

@@ -14,7 +14,8 @@ import {
   Copy,
   Sparkles,
   MessageCircle,
-  Wand2
+  Wand2,
+  History
 } from "lucide-react";
 import {
   Dialog,
@@ -27,7 +28,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePreview } from "./image-preview";
 import { buildPrompt, promptTemplates } from "@/lib/prompt-builder";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { ProjectForm } from "./project-form";
+import { HistoryDialog } from "./history-dialog";
 
 interface ImageModel {
   id: string;
@@ -58,6 +61,8 @@ export function ImageGenerationInterface() {
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [enhancedPrompt, setEnhancedPrompt] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [currentProjectName, setCurrentProjectName] = useState<string>("");
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Default settings without localStorage dependency
   const defaultSettings: Settings = {
@@ -131,6 +136,11 @@ export function ImageGenerationInterface() {
   const generateImage = async (inputPrompt: string) => {
     if (!inputPrompt.trim() || isLoading) return;
     
+    if (!currentProjectName) {
+      setError("Please set a project name before generating images.");
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
     setPrompt(inputPrompt);
@@ -198,6 +208,7 @@ export function ImageGenerationInterface() {
           steps: adjustedSteps,
           apiKey: apiKey,
           model: settings.selectedModel?.model,
+          projectName: currentProjectName,
         }),
       });
 
@@ -417,10 +428,18 @@ export function ImageGenerationInterface() {
     }
   };
 
+  // Handle selecting image from history
+  const handleSelectHistoryImage = (image: any) => {
+    if (image.blobUrl) {
+      setBlobUrl(image.blobUrl);
+    }
+    setImageData(image.imageData);
+  };
+
   return (
-    <div className="w-full h-full px-4 md:px-6 lg:px-8 py-4 md:py-6 animate-in fade-in-0 duration-500">
-      <div className="group relative overflow-hidden w-full h-full bg-card/50 dark:bg-card/50 border border-border/50 dark:border-border/50 rounded-2xl backdrop-blur-xl shadow-xl">
-        <div className="w-full h-full grid grid-cols-1 lg:grid-cols-4 gap-4 p-4">
+    <div className="w-full h-full p-2 sm:px-4 md:px-6 lg:px-8 sm:py-4 md:py-6 animate-in fade-in-0 duration-500">
+      <div className="group relative overflow-hidden w-full h-full bg-card/50 dark:bg-card/50 border border-border/50 dark:border-border/50 rounded-3xl backdrop-blur-xl">
+        <div className="w-full h-full grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-4 p-2 sm:p-4">
           <div className="lg:col-span-3 w-full flex flex-col gap-4">
             <ImagePreview
               imageData={imageData}
@@ -438,73 +457,89 @@ export function ImageGenerationInterface() {
               openInNewTab={openInNewTab}
               setError={setError}
               setImageData={setImageData}
+              setBlobUrl={setBlobUrl}
             />
           </div>
           
-          <div className="w-full flex flex-col gap-4">
-            <Card className="rounded-xl border border-border/50 dark:border-border/50 bg-card/50 dark:bg-card/50 backdrop-blur-xl h-auto">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-4">
+          <div className="w-full flex flex-col gap-3 sm:gap-4">
+            <ProjectForm onProjectNameChange={setCurrentProjectName} />
+            
+            <Card className="rounded-2xl border border-border/50 dark:border-border/50 bg-card/50 dark:bg-card/50 backdrop-blur-xl h-auto">
+              <CardContent className="p-3 sm:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 sm:mb-4">
                   <div className="flex items-center gap-2">
                     <MessageCircle className="w-4 h-4 text-muted-foreground" />
                     <h3 className="text-sm font-medium text-foreground">Image Prompt</h3>
                   </div>
-                  <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                    <DialogTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-lg bg-background/50 dark:bg-background/50 text-foreground border-border/50"
-                      >
-                        <Sliders className="h-4 w-4 mr-2" />
-                        Settings
-                      </Button>
-                    </DialogTrigger>
-                    <ImageSettings 
-                      settings={{
-                        negativePrompt: settings.negativePrompt,
-                        selectedModel: settings.selectedModel,
-                        selectedTemplate: settings.selectedTemplate
-                      }} 
-                      setSettings={updateSettings}
-                      open={isSettingsOpen}
-                      onOpenChange={setIsSettingsOpen}
-                    />
-                  </Dialog>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl bg-background/50 dark:bg-background/50 text-foreground border-border/50 transition-colors duration-300 hover:bg-accent/70"
+                      onClick={() => setIsHistoryOpen(true)}
+                    >
+                      <History className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">History</span>
+                    </Button>
+                    <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="rounded-xl bg-background/50 dark:bg-background/50 text-foreground border-border/50 transition-colors duration-300 hover:bg-accent/70"
+                        >
+                          <Sliders className="h-4 w-4 mr-2" />
+                          <span className="hidden sm:inline">Settings</span>
+                        </Button>
+                      </DialogTrigger>
+                      <ImageSettings 
+                        settings={{
+                          negativePrompt: settings.negativePrompt,
+                          selectedModel: settings.selectedModel,
+                          selectedTemplate: settings.selectedTemplate
+                        }} 
+                        setSettings={updateSettings}
+                        open={isSettingsOpen}
+                        onOpenChange={setIsSettingsOpen}
+                      />
+                    </Dialog>
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-zinc-500"></span>
-                    </div>
-                  </div>
-                  
-                  <div className={cn(
-                    "transition-all ease-in-out duration-200",
-                    isLoading && "opacity-50 pointer-events-none"
-                  )}>
-                    <div className="relative">
-                      <Textarea
-                        ref={textareaRef}
-                        placeholder="Describe your image in detail (e.g., 'a serene lake at sunset with mountains in the background')..."
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        className="w-full min-h-[200px] max-h-[300px] bg-background/50 dark:bg-background/50 border-border/50 resize-none p-4 text-foreground placeholder:text-muted-foreground rounded-xl"
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
+                <div className="space-y-2">                  
+                  <AnimatePresence>
+                    <motion.div 
+                      className={cn(
+                        "transition-all ease-in-out duration-300",
+                        isLoading && "opacity-50 pointer-events-none"
+                      )}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="relative">
+                        <Textarea
+                          ref={textareaRef}
+                          placeholder="Describe your image in detail (e.g., 'a serene lake at sunset with mountains in the background')..."
+                          value={inputValue}
+                          onChange={(e) => setInputValue(e.target.value)}
+                          className="w-full min-h-[120px] sm:min-h-[200px] max-h-[300px] bg-background/50 dark:bg-background/50 border-border/50 resize-none p-3 sm:p-4 text-foreground placeholder:text-muted-foreground rounded-2xl transition-all duration-300 focus:ring-2 focus:ring-primary/30"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
                 
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-4">
                     <Button
                       variant="outline"
                       size="sm"
                       className={cn(
-                        "h-10 relative px-4",
-                        "flex items-center gap-2",
-                        "border border-border/50",
-                        "transition-all duration-200",
+                        "h-10 relative px-3 sm:px-4",
+                        "flex items-center justify-center sm:justify-start gap-2",
+                        "border border-border/50 rounded-2xl",
+                        "transition-all duration-300",
                         isEnhanceEnabled
                           ? "bg-primary/10 dark:bg-primary/20 border-primary/20 dark:border-primary/30"
                           : "bg-background/50 dark:bg-background/50 hover:bg-accent/50 dark:hover:bg-accent/50",
@@ -512,13 +547,13 @@ export function ImageGenerationInterface() {
                       onClick={() => setIsEnhanceEnabled(!isEnhanceEnabled)}
                     >
                       <div className={cn(
-                        "relative flex items-center w-8 h-4 rounded-full transition-colors duration-200",
+                        "relative flex items-center w-8 h-4 rounded-full transition-colors duration-300",
                         isEnhanceEnabled 
                           ? "bg-primary" 
                           : "bg-muted dark:bg-muted"
                       )}>
                         <div className={cn(
-                          "absolute w-3 h-3 rounded-full bg-white transition-transform duration-200 transform",
+                          "absolute w-3 h-3 rounded-full bg-white transition-transform duration-300 transform",
                           isEnhanceEnabled ? "translate-x-4" : "translate-x-1"
                         )} />
                       </div>
@@ -545,19 +580,27 @@ export function ImageGenerationInterface() {
                         "flex-1 h-10 relative overflow-hidden",
                         "flex items-center justify-center gap-2",
                         "bg-gradient-to-r from-primary to-primary/80",
-                        "text-white text-sm font-medium rounded-xl",
-                        "transition-all duration-200",
+                        "text-white text-sm font-medium rounded-2xl",
+                        "transition-all duration-300",
                         "hover:from-primary/90 hover:to-primary/70",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
                         "group"
                       )}
                       whileTap={{ scale: 0.98 }}
                       whileHover={{ scale: 1.01 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
                     >
                       {isLoading ? (
                         <>
                           <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80" />
-                          <div className="absolute inset-0 flex items-center justify-center gap-2">
+                          <motion.div 
+                            className="absolute inset-0 flex items-center justify-center gap-2"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.2 }}
+                          >
                             <svg 
                               className="animate-spin h-4 w-4" 
                               xmlns="http://www.w3.org/2000/svg" 
@@ -581,7 +624,7 @@ export function ImageGenerationInterface() {
                             <span className="animate-pulse">
                               {isEnhancing ? "Enhancing..." : "Generating..."}
                             </span>
-                          </div>
+                          </motion.div>
                         </>
                       ) : (
                         <>
@@ -594,14 +637,14 @@ export function ImageGenerationInterface() {
                               ease: "easeOut"
                             }}
                           />
-                          <Sparkles className="w-4 h-4 relative z-10 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12" />
+                          <Sparkles className="w-4 h-4 relative z-10 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
                           <span className="relative z-10">Generate Image</span>
                           <motion.div
                             className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/10"
                             initial={{ scale: 0, opacity: 0 }}
                             whileHover={{ scale: 1, opacity: 1 }}
                             transition={{
-                              duration: 0.2,
+                              duration: 0.3,
                               ease: "easeOut"
                             }}
                           />
@@ -615,6 +658,18 @@ export function ImageGenerationInterface() {
           </div>
         </div>
       </div>
+
+      <HistoryDialog
+        open={isHistoryOpen}
+        onOpenChange={setIsHistoryOpen}
+        onSelectImage={(image) => {
+          if (image.blobUrl) {
+            setBlobUrl(image.blobUrl);
+            setImageData(`data:image/png;base64,${image.blobUrl.split(',')[1]}`);
+          }
+        }}
+        currentProjectName={currentProjectName}
+      />
     </div>
   );
 } 

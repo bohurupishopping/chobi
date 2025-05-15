@@ -83,7 +83,13 @@ export const referenceImages: ReferenceImage[] = [
 // Add fixed seed for consistency
 export const FIXED_SEED = 42;
 
-export function buildPrompt(sceneDescription: string, templateId: string = "no-template"): { prompt: string; negativePrompt: string; seed: number; referenceImages: string[] } {
+// Add image size configuration with 16:9 aspect ratio
+export const IMAGE_SIZE = {
+  width: 1024,
+  height: 720, // 16:9 aspect ratio (1024 ÷ 16 × 9 = 576)
+};
+
+export function buildPrompt(sceneDescription: string, templateId: string = "no-template"): { prompt: string; negativePrompt: string; seed: number; referenceImages: string[]; width: number; height: number } {
   const template = promptTemplates.find(t => t.id === templateId);
   if (!template) {
     throw new Error(`Template ${templateId} not found`);
@@ -97,10 +103,12 @@ export function buildPrompt(sceneDescription: string, templateId: string = "no-t
   // If using no-template, return the scene description with style reference
   if (templateId === "no-template") {
     return {
-      prompt: `Create an image that matches the following description while maintaining a consistent style similar to the provided reference images: ${sceneDescription}, best quality, highly detailed`,
+      prompt: `Create an image that matches the following description while maintaining a consistent style similar to the provided reference images: ${sceneDescription}, best quality, highly detailed, 16:9 aspect ratio, cinematic composition`,
       negativePrompt: template.template.negativePrompt,
       seed: FIXED_SEED,
-      referenceImages: refImagePaths
+      referenceImages: refImagePaths,
+      width: IMAGE_SIZE.width,
+      height: IMAGE_SIZE.height
     };
   }
 
@@ -118,7 +126,7 @@ Cinematic Elements: ${cinematicElements}
 
 Technical Details: ${focalLength}
 
-Additional Requirements: masterpiece, best quality, highly detailed, ultra sharp focus, 8k UHD, professional photography, artistic composition
+Additional Requirements: masterpiece, best quality, highly detailed, ultra sharp focus, 8k UHD, professional photography, artistic composition, 16:9 aspect ratio, cinematic widescreen format
 
 Important: Maintain the same artistic style, color palette, and composition approach as shown in the reference images while incorporating the specific scene requirements above.
 `.trim();
@@ -127,6 +135,8 @@ Important: Maintain the same artistic style, color palette, and composition appr
     prompt: enhancedPrompt,
     negativePrompt: template.template.negativePrompt,
     seed: FIXED_SEED,
-    referenceImages: refImagePaths
+    referenceImages: refImagePaths,
+    width: IMAGE_SIZE.width,
+    height: IMAGE_SIZE.height
   };
 } 

@@ -4,6 +4,7 @@ import { put } from '@vercel/blob';
 import * as fs from 'fs';
 import * as path from 'path';
 import { referenceImages } from '@/lib/prompt-builder';
+import { list } from '@vercel/blob';
 
 // Maximum prompt length that Gemini can handle effectively
 const MAX_PROMPT_LENGTH = 4000;
@@ -28,6 +29,27 @@ async function getImageAsBase64(imagePath: string): Promise<string> {
   return imageBuffer.toString('base64');
 }
 
+async function getNextSequenceNumber(projectName: string): Promise<number> {
+  try {
+    const { blobs } = await list();
+    const projectImages = blobs.filter(blob => 
+      blob.pathname.startsWith(`${projectName}-`)
+    );
+    
+    if (projectImages.length === 0) return 1;
+    
+    const numbers = projectImages.map(blob => {
+      const match = blob.pathname.match(new RegExp(`${projectName}-(\\d+)`));
+      return match ? parseInt(match[1], 10) : 0;
+    });
+    
+    return Math.max(...numbers) + 1;
+  } catch (error) {
+    console.error('Error getting sequence number:', error);
+    return Date.now(); // Fallback to timestamp if error
+  }
+}
+
 export async function POST(request: NextRequest) {
   console.log('\n=== Google Model API Request Started ===');
   const requestStartTime = Date.now();
@@ -40,10 +62,11 @@ export async function POST(request: NextRequest) {
       seed: requestData.seed,
       steps: requestData.steps,
       hasApiKey: !!requestData.apiKey,
-      referenceImages: requestData.referenceImages
+      referenceImages: requestData.referenceImages,
+      projectName: requestData.projectName
     });
 
-    const { prompt, negativePrompt, seed, steps, apiKey } = requestData;
+    const { prompt, negativePrompt, seed, steps, apiKey, projectName } = requestData;
     
     // Always use the default reference images
     const defaultRefImages = referenceImages.map(img => img.path);
@@ -53,6 +76,14 @@ export async function POST(request: NextRequest) {
       console.error('Error: No prompt provided');
       return NextResponse.json(
         { error: 'Prompt is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!projectName) {
+      console.error('Error: No project name provided');
+      return NextResponse.json(
+        { error: 'Project name is required' },
         { status: 400 }
       );
     }
@@ -218,15 +249,21 @@ export async function POST(request: NextRequest) {
       // Create a base64 data URL from the image data
       const base64ImageData = `data:image/png;base64,${imageData}`;
       
+      // Get the next sequence number for this project
+      const sequenceNumber = await getNextSequenceNumber(projectName);
+      
+      // Create the filename with project name and sequence number
+      const filename = `${projectName}-${sequenceNumber}.png`;
+      
       console.log('\nUploading to Vercel Blob...');
       // Store the image in Vercel Blob
       const buffer = Buffer.from(imageData, 'base64');
-      const filename = `generated-image-16x9-${timestamp}-${fixedSeed}.png`;
       
       const blob = await put(filename, buffer, {
         contentType: 'image/png',
         access: 'public',
       });
+      
       console.log('Successfully uploaded to Vercel Blob:', blob.url);
 
       const responseData = {
@@ -234,6 +271,8 @@ export async function POST(request: NextRequest) {
         blobUrl: blob.url,
         text: responseText || "Image generated successfully",
         prompt: processedPrompt,
+        projectName,
+        sequenceNumber,
         timestamp: timestamp,
         metadata: {
           seed: fixedSeed,
