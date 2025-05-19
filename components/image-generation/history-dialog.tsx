@@ -188,10 +188,23 @@ export function HistoryDialog({
     // Find all selected images
     const imagesToDownload = images.filter(img => selectedImageIds.has(img.id));
     
-    // Download each image
-    imagesToDownload.forEach(image => {
+    // Create a function that downloads images sequentially with a small delay
+    const downloadSequentially = (images: HistoryImage[], index = 0) => {
+      if (index >= images.length) return;
+      
+      const image = images[index];
+      
+      // Download the current image
       downloadImage(image);
-    });
+      
+      // Schedule the next download with a small delay
+      setTimeout(() => {
+        downloadSequentially(images, index + 1);
+      }, 300); // 300ms delay between downloads
+    };
+    
+    // Start the sequential download process
+    downloadSequentially(imagesToDownload);
   };
 
   const handleUseImage = () => {

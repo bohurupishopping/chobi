@@ -24,15 +24,17 @@ const systemPrompt = `You are an expert at enhancing image generation prompts, s
    - Consider scene framing and visual flow
    - Add a description of the scene in the form of a story
    - camera lens focal length (example : 35mm, 50mm, 85mm, 135mm, etc.)
+   - Always specify 16:9 aspect ratio (widescreen format) for cinematic composition
+   - Ensure landscape orientation for optimal widescreen presentation
 
 Format the enhanced prompt in clear, logical sections while maintaining natural flow. Keep the original intent but make it more vivid and specific.
 
 Example Structure:
 Main Subject: [Enhanced subject description with emotional elements]
 Scene Context: [Environmental and atmospheric details]
-Composition: [Camera and framing specifics]
+Composition: [Camera and framing specifics, including 16:9 aspect ratio]
 
-Keep the enhanced prompt natural and flowing, focusing on the creative and narrative aspects of the scene.`;
+Keep the enhanced prompt natural and flowing, focusing on the creative and narrative aspects of the scene. Always maintain the 16:9 aspect ratio requirement for cinematic presentation.`;
 
 export async function POST(req: Request) {
   try {

@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Create a quality-enhanced prompt with specific details for high-quality generation
-    const qualityEnhancement = "high quality cinematic illustration, detailed artwork, professional illustration, crisp details";
+    const qualityEnhancement = "high quality cinematic illustration, detailed artwork, professional illustration, crisp details, 16:9 aspect ratio, widescreen format, landscape orientation";
     
     // Build the complete prompt with enhancements and appropriate negative prompt handling
     let enhancedPrompt = `${processedPrompt}. ${qualityEnhancement}`;

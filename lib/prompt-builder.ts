@@ -103,7 +103,7 @@ export function buildPrompt(sceneDescription: string, templateId: string = "no-t
   // If using no-template, return the scene description with style reference
   if (templateId === "no-template") {
     return {
-      prompt: `Create an image that matches the following description while maintaining a consistent style similar to the provided reference images: ${sceneDescription}, best quality, highly detailed, 16:9 aspect ratio, cinematic composition`,
+      prompt: `Create an image that matches the following description while maintaining a consistent style similar to the provided reference images: ${sceneDescription}, best quality, highly detailed, 16:9 aspect ratio, cinematic composition, widescreen format`,
       negativePrompt: template.template.negativePrompt,
       seed: FIXED_SEED,
       referenceImages: refImagePaths,
@@ -126,9 +126,9 @@ Cinematic Elements: ${cinematicElements}
 
 Technical Details: ${focalLength}
 
-Additional Requirements: masterpiece, best quality, highly detailed, ultra sharp focus, 8k UHD, professional photography, artistic composition, 16:9 aspect ratio, cinematic widescreen format
+Additional Requirements: masterpiece, best quality, highly detailed, ultra sharp focus, 8k UHD, professional photography, artistic composition, 16:9 aspect ratio, cinematic widescreen format, landscape orientation
 
-Important: Maintain the same artistic style, color palette, and composition approach as shown in the reference images while incorporating the specific scene requirements above.
+Important: Maintain the same artistic style, color palette, and composition approach as shown in the reference images while incorporating the specific scene requirements above. The image must be in 16:9 aspect ratio (widescreen format).
 `.trim();
 
   return {
