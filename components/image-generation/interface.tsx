@@ -5,31 +5,30 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  History,
+  Image as ImageIcon,
+  Sliders,
+  Sparkles,
+  Wand2,
   Loader2,
   RefreshCw,
   Share2,
-  Sliders,
-  Image as ImageIcon,
   ExternalLink,
   Copy,
-  Sparkles,
   MessageCircle,
-  Wand2,
-  History
 } from "lucide-react";
 import {
   Dialog,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ImageSettings } from "./image-settings";
+import { HistoryDialog } from "./history-dialog";
 import { cn } from "@/lib/utils";
 
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePreview } from "./image-preview";
 import { buildPrompt, promptTemplates } from "@/lib/prompt-builder";
 import { motion, AnimatePresence } from "framer-motion";
-import { ProjectForm } from "./project-form";
-import { HistoryDialog } from "./history-dialog";
 import { PromptImporter } from "./prompt-importer";
 import { toast } from "@/components/ui/use-toast";
 
@@ -63,6 +62,7 @@ export function ImageGenerationInterface() {
   const [enhancedPrompt, setEnhancedPrompt] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [currentProjectName, setCurrentProjectName] = useState<string>("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Imported prompts state
@@ -86,7 +86,7 @@ export function ImageGenerationInterface() {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [selectedProvider, setSelectedProvider] = useState<"gemini" | "together">("together");
   const [isSettingsInitialized, setIsSettingsInitialized] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
 
   // Available models
   const availableModels: ImageModel[] = [
@@ -494,8 +494,6 @@ export function ImageGenerationInterface() {
           </div>
           
           <div className="w-full flex flex-col gap-3 sm:gap-4">
-            <ProjectForm onProjectNameChange={setCurrentProjectName} />
-            
             <PromptImporter 
               onPromptSelect={(prompt) => setInputValue(prompt)} 
             />
@@ -507,7 +505,15 @@ export function ImageGenerationInterface() {
                     <MessageCircle className="w-4 h-4 text-muted-foreground" />
                     <h3 className="text-sm font-medium text-foreground">Image Prompt</h3>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl bg-background/50 dark:bg-background/50 text-foreground border-border/50 transition-colors duration-300 hover:bg-accent/70"
+                    onClick={() => setIsSettingsOpen(true)}
+                  >
+                    <Sliders className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Settings</span>
+                  </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -517,29 +523,6 @@ export function ImageGenerationInterface() {
                       <History className="h-4 w-4 mr-2" />
                       <span className="hidden sm:inline">History</span>
                     </Button>
-                    <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="rounded-xl bg-background/50 dark:bg-background/50 text-foreground border-border/50 transition-colors duration-300 hover:bg-accent/70"
-                        >
-                          <Sliders className="h-4 w-4 mr-2" />
-                          <span className="hidden sm:inline">Settings</span>
-                        </Button>
-                      </DialogTrigger>
-                      <ImageSettings 
-                        settings={{
-                          negativePrompt: settings.negativePrompt,
-                          selectedModel: settings.selectedModel,
-                          selectedTemplate: settings.selectedTemplate
-                        }} 
-                        setSettings={updateSettings}
-                        open={isSettingsOpen}
-                        onOpenChange={setIsSettingsOpen}
-                      />
-                    </Dialog>
-                  </div>
                 </div>
                 
                 <div className="space-y-2">                  
@@ -695,10 +678,19 @@ export function ImageGenerationInterface() {
         </div>
       </div>
 
+      <ImageSettings
+        settings={settings}
+        setSettings={setSettings}
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        onProjectNameChange={setCurrentProjectName}
+        currentProjectName={currentProjectName}
+      />
+      
       <HistoryDialog
         open={isHistoryOpen}
         onOpenChange={setIsHistoryOpen}
-        onSelectImage={(image) => {
+        onSelectImage={(image: { blobUrl: string }) => {
           if (image.blobUrl) {
             setBlobUrl(image.blobUrl);
             setImageData(`data:image/png;base64,${image.blobUrl.split(',')[1]}`);

@@ -73,9 +73,18 @@ interface ImageSettingsProps {
   setSettings: Dispatch<SetStateAction<any>>;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onProjectNameChange?: (name: string) => void;
+  currentProjectName?: string;
 }
 
-export function ImageSettings({ settings, setSettings, open, onOpenChange }: ImageSettingsProps) {
+export function ImageSettings({ 
+  settings, 
+  setSettings, 
+  open, 
+  onOpenChange, 
+  onProjectNameChange, 
+  currentProjectName
+}: ImageSettingsProps) {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyValue, setNewKeyValue] = useState('');
@@ -85,6 +94,7 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
   const [isSavingKey, setIsSavingKey] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<"gemini" | "together" | "openai">("gemini");
+  const [projectName, setProjectName] = useState<string>(currentProjectName || "");
   const { toast } = useToast();
 
   // Available models
@@ -102,6 +112,17 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
       model: "black-forest-labs/FLUX.1-schnell-Free"
     }
   ];
+
+  // Load project name from localStorage on mount
+  useEffect(() => {
+    const savedProjectName = localStorage.getItem("current_project_name");
+    if (savedProjectName) {
+      setProjectName(savedProjectName);
+      if (onProjectNameChange) {
+        onProjectNameChange(savedProjectName);
+      }
+    }
+  }, [onProjectNameChange]);
 
   // Load API keys from localStorage only on client side
   useEffect(() => {
@@ -169,11 +190,40 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
     }
   };
 
+  const handleSaveProject = () => {
+    if (!projectName.trim()) {
+      toast({
+        title: "Project name required",
+        description: "Please enter a project name to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Save to localStorage
+    localStorage.setItem("current_project_name", projectName);
+    if (onProjectNameChange) {
+      onProjectNameChange(projectName);
+    }
+
+    toast({
+      title: "Project name saved",
+      description: `"${projectName}" is now your active project.`,
+      duration: 3000,
+    });
+  };
+
   const handleApplySettings = async () => {
     setIsSaving(true);
     await new Promise(resolve => setTimeout(resolve, 400));
     setSettings(localSettings);
 
+    // Save project name if changed
+    if (projectName.trim() && projectName !== currentProjectName) {
+      handleSaveProject();
+    }
+
+    // Save API keys if any
     if (apiKeys.length > 0) {
       try {
         localStorage.setItem('ai_api_keys', JSON.stringify(apiKeys));
@@ -317,6 +367,41 @@ export function ImageSettings({ settings, setSettings, open, onOpenChange }: Ima
         
         <ScrollArea className="h-[600px] px-6">
           <div className="space-y-8 py-6">
+            {/* Project Name Section */}
+            <div className="space-y-4 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700">
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-zinc-500">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" x2="8" y1="13" y2="13"/>
+                  <line x1="16" x2="8" y1="17" y2="17"/>
+                  <line x1="10" x2="8" y1="9" y2="9"/>
+                </svg>
+                <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Project</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  placeholder="Enter project name"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  className="flex-1 h-9 bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
+                />
+                <Button 
+                  onClick={handleSaveProject}
+                  className="h-9 bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </Button>
+              </div>
+              {projectName && (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Project: <span className="font-medium text-zinc-700 dark:text-zinc-300">{projectName}</span>
+                </p>
+              )}
+            </div>
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

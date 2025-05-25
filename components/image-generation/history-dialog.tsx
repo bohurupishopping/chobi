@@ -45,10 +45,13 @@ export function HistoryDialog({
   const [images, setImages] = useState<HistoryImage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"all" | "current">("current");
+  const [viewMode, setViewMode] = useState<"all" | "current" | string>("current");
   const [selectedImage, setSelectedImage] = useState<HistoryImage | null>(null);
   const [selectedImageIds, setSelectedImageIds] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+  // Get unique project names
+  const projectNames = Array.from(new Set(images.map(img => img.projectName))).sort();
 
   // Fetch images from blob storage
   const fetchImages = async () => {
@@ -241,9 +244,14 @@ export function HistoryDialog({
   };
 
   // Filter images based on view mode
-  const filteredImages = viewMode === "current" && currentProjectName
-    ? images.filter(img => img.projectName === currentProjectName)
-    : images;
+  const filteredImages = (() => {
+    if (viewMode === "current" && currentProjectName) {
+      return images.filter(img => img.projectName === currentProjectName);
+    } else if (viewMode !== "all" && viewMode !== "current") {
+      return images.filter(img => img.projectName === viewMode);
+    }
+    return images;
+  })();
 
   // Group images by project name
   const groupedImages = filteredImages.reduce((acc, image) => {
@@ -364,23 +372,48 @@ export function HistoryDialog({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 mt-4 mb-2">
-            <Button
-              variant={viewMode === "current" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("current")}
-              className="h-9 px-4 rounded-full"
-            >
-              Current Project
-            </Button>
-            <Button
-              variant={viewMode === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("all")}
-              className="h-9 px-4 rounded-full"
-            >
-              All Projects
-            </Button>
+          <div className="flex items-center gap-2 mt-4 mb-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Button
+                variant={viewMode === "current" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("current")}
+                className="h-9 px-4 rounded-full"
+              >
+                Current Project
+              </Button>
+              <Button
+                variant={viewMode === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("all")}
+                className="h-9 px-4 rounded-full"
+              >
+                All Projects
+              </Button>
+            </div>
+            
+            {projectNames.length > 0 && (
+              <div className="flex items-center gap-2 ml-2 border-l border-zinc-200 dark:border-zinc-700 pl-3">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 mr-1">Projects:</span>
+                <div className="flex flex-wrap gap-1">
+                  {projectNames.map(projectName => (
+                    <Button
+                      key={projectName}
+                      variant={viewMode === projectName ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setViewMode(projectName)}
+                      className={cn(
+                        "h-9 px-3 rounded-full text-xs truncate max-w-[120px]",
+                        viewMode === projectName && "bg-blue-600 hover:bg-blue-700 text-white"
+                      )}
+                      title={projectName}
+                    >
+                      {projectName}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </DialogHeader>
 
