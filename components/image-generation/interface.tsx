@@ -24,7 +24,6 @@ import {
 import { ImageSettings } from "./image-settings";
 import { cn } from "@/lib/utils";
 
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePreview } from "./image-preview";
 import { buildPrompt, promptTemplates } from "@/lib/prompt-builder";
@@ -32,10 +31,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ProjectForm } from "./project-form";
 import { HistoryDialog } from "./history-dialog";
 import { PromptImporter } from "./prompt-importer";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Upload } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 interface ImageModel {

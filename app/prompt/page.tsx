@@ -4,9 +4,9 @@ import type React from "react"
 
 import { useState } from "react"
 import { toast } from "@/hooks/use-toast"
-import { StoryInput } from "./components/StoryInput"
-import { SceneList } from "./components/SceneList"
-import { EmptyState } from "./components/EmptyState"
+import { StoryInput } from "../../components/prompt-generation/StoryInput"
+import { SceneList } from "../../components/prompt-generation/SceneList"
+import { EmptyState } from "../../components/prompt-generation/EmptyState"
 
 export interface Scene {
   id: string

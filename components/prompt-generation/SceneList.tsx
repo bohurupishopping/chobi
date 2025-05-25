@@ -1,4 +1,4 @@
-import { Scene } from "../page"
+import { Scene } from "../../app/prompt/page"
 import { SceneItem } from "./SceneItem"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"

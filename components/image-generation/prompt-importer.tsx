@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Upload, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 type Prompt = {
@@ -70,9 +70,25 @@ export function PromptImporter({ onPromptSelect }: PromptImporterProps) {
     setSelectedPromptIndex(-1);
   };
 
-  const handleUsePrompt = () => {
+  // Auto-select first prompt when imported
+  useEffect(() => {
+    if (importedPrompts.length > 0 && selectedPromptIndex === -1) {
+      setSelectedPromptIndex(0);
+    }
+  }, [importedPrompts, selectedPromptIndex]);
+
+  // Update parent when selected prompt changes
+  useEffect(() => {
     if (selectedPromptIndex >= 0 && importedPrompts[selectedPromptIndex]) {
       onPromptSelect(importedPrompts[selectedPromptIndex].prompt);
+    }
+  }, [selectedPromptIndex, importedPrompts, onPromptSelect]);
+
+  const navigatePrompt = (direction: 'prev' | 'next') => {
+    if (direction === 'prev' && selectedPromptIndex > 0) {
+      setSelectedPromptIndex(prev => prev - 1);
+    } else if (direction === 'next' && selectedPromptIndex < importedPrompts.length - 1) {
+      setSelectedPromptIndex(prev => prev + 1);
     }
   };
 
@@ -112,41 +128,67 @@ export function PromptImporter({ onPromptSelect }: PromptImporterProps) {
         </Button>
       </div>
       
-      <div className="space-y-2">
-        <div className="grid gap-2">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => navigatePrompt('prev')}
+            disabled={selectedPromptIndex <= 0}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
           <Select
             value={selectedPromptIndex.toString()}
             onValueChange={(value) => setSelectedPromptIndex(parseInt(value))}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a prompt" />
+            <SelectTrigger className="flex-1">
+              <SelectValue>
+                {selectedPromptIndex >= 0 
+                  ? `Scene ${importedPrompts[selectedPromptIndex]?.sceneNumber}`
+                  : 'Select a prompt'}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {importedPrompts.map((item, index) => (
                 <SelectItem key={index} value={index.toString()}>
-                  Scene {item.sceneNumber}: {item.prompt.substring(0, 40)}{item.prompt.length > 40 ? '...' : ''}
+                  Scene {item.sceneNumber}: {item.prompt.substring(0, 35)}{item.prompt.length > 35 ? '...' : ''}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           
-          {selectedPromptIndex >= 0 && (
-            <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-              <div className="font-medium">Scene {importedPrompts[selectedPromptIndex].sceneNumber}</div>
-              <p className="line-clamp-2">
-                {importedPrompts[selectedPromptIndex].content || 'No description available'}
-              </p>
-            </div>
-          )}
-          
           <Button 
-            onClick={handleUsePrompt}
-            disabled={selectedPromptIndex < 0}
-            className="w-full"
+            variant="outline" 
+            size="icon" 
+            onClick={() => navigatePrompt('next')}
+            disabled={selectedPromptIndex >= importedPrompts.length - 1}
+            className="h-8 w-8 p-0"
           >
-            Use Selected Prompt
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+        
+        <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+          <span>
+            {importedPrompts.length > 0 && selectedPromptIndex >= 0
+              ? `Prompt ${selectedPromptIndex + 1} of ${importedPrompts.length}`
+              : 'No prompts'}
+          </span>
+          {selectedPromptIndex >= 0 && (
+            <span className="font-medium">
+              Scene {importedPrompts[selectedPromptIndex]?.sceneNumber}
+            </span>
+          )}
+        </div>
+        
+        {selectedPromptIndex >= 0 && importedPrompts[selectedPromptIndex]?.content && (
+          <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded border">
+            <p className="whitespace-pre-line">{importedPrompts[selectedPromptIndex].content}</p>
+          </div>
+        )}
       </div>
     </div>
   );
