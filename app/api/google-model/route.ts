@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     const qualityEnhancement = "high quality cinematic illustration, detailed artwork, professional illustration, crisp details, 16:9 aspect ratio, widescreen format, landscape orientation";
     
     // Build the complete prompt with enhancements and appropriate negative prompt handling
-    let enhancedPrompt = `${processedPrompt}. ${qualityEnhancement}`;
+    const enhancedPrompt = `${processedPrompt}. ${qualityEnhancement}`;
     
     // Use fixed seed for consistency if provided, otherwise use the default
     const fixedSeed = seed || 42;

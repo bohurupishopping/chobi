@@ -31,6 +31,12 @@ import { buildPrompt, promptTemplates } from "@/lib/prompt-builder";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProjectForm } from "./project-form";
 import { HistoryDialog } from "./history-dialog";
+import { PromptImporter } from "./prompt-importer";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Download, Upload } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 interface ImageModel {
   id: string;
@@ -63,6 +69,10 @@ export function ImageGenerationInterface() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [currentProjectName, setCurrentProjectName] = useState<string>("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  // Imported prompts state
+  const [importedPrompts, setImportedPrompts] = useState<Array<{sceneNumber: number, prompt: string, content?: string}>>([]);
+  const [selectedPromptIndex, setSelectedPromptIndex] = useState<number>(-1);
 
   // Default settings without localStorage dependency
   const defaultSettings: Settings = {
@@ -367,7 +377,11 @@ export function ImageGenerationInterface() {
           }
         } catch (error) {
           console.error('Error in enhancement process:', error);
-          setError(error instanceof Error ? error.message : 'Failed to enhance prompt. Please try again.');
+          toast({
+            title: "Error",
+            description: "Failed to enhance prompt. Please try again.",
+            variant: "destructive",
+          });
           setIsLoading(false);
           setIsEnhancing(false);
           return;
@@ -436,6 +450,29 @@ export function ImageGenerationInterface() {
     setImageData(image.imageData);
   };
 
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target && event.target.result) {
+          try {
+            const data = JSON.parse(event.target.result as string);
+            setImportedPrompts(data);
+          } catch (error) {
+            console.error('Error parsing imported prompts:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to import prompts. Please check the file format.',
+              variant: 'destructive',
+            });
+          }
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
   return (
     <div className="w-full h-full p-2 sm:px-4 md:px-6 lg:px-8 sm:py-4 md:py-6 animate-in fade-in-0 duration-500">
       <div className="group relative overflow-hidden w-full h-full bg-card/50 dark:bg-card/50 border border-border/50 dark:border-border/50 rounded-3xl backdrop-blur-xl">
@@ -463,6 +500,10 @@ export function ImageGenerationInterface() {
           
           <div className="w-full flex flex-col gap-3 sm:gap-4">
             <ProjectForm onProjectNameChange={setCurrentProjectName} />
+            
+            <PromptImporter 
+              onPromptSelect={(prompt) => setInputValue(prompt)} 
+            />
             
             <Card className="rounded-2xl border border-border/50 dark:border-border/50 bg-card/50 dark:bg-card/50 backdrop-blur-xl h-auto">
               <CardContent className="p-3 sm:p-5">
