@@ -17,7 +17,8 @@ import {
   Info,
   CheckCircle,
   Square,
-  CheckSquare
+  CheckSquare,
+  AlertCircle
 } from "lucide-react";
 
 interface HistoryImage {
@@ -187,6 +188,46 @@ export function HistoryDialog({
     setSelectedImageIds(new Set());
   };
 
+  const handleDeleteSelected = async () => {
+    // Find all selected images
+    const imagesToDelete = images.filter(img => selectedImageIds.has(img.id));
+    
+    if (imagesToDelete.length === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${imagesToDelete.length} selected image${imagesToDelete.length > 1 ? 's' : ''}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Delete images one by one
+      for (const image of imagesToDelete) {
+        await fetch('/api/blob-delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageId: image.id
+          }),
+        });
+      }
+      
+      // Refresh the image list
+      await fetchImages();
+      
+      // Clear selection
+      setSelectedImageIds(new Set());
+      
+    } catch (err) {
+      console.error('Error deleting selected images:', err);
+      setError('Failed to delete selected images');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDownloadSelected = () => {
     // Find all selected images
     const imagesToDownload = images.filter(img => selectedImageIds.has(img.id));
@@ -283,7 +324,7 @@ export function HistoryDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 px-3"
+                    className="h-9 px-3 rounded-full"
                     onClick={selectAll}
                     disabled={filteredImages.length === 0}
                   >
@@ -292,7 +333,7 @@ export function HistoryDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 px-3"
+                    className="h-9 px-3 rounded-full"
                     onClick={deselectAll}
                     disabled={selectedCount === 0}
                   >
@@ -301,12 +342,22 @@ export function HistoryDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 px-3"
+                    className="h-9 px-3 rounded-full"
                     onClick={handleDownloadSelected}
                     disabled={selectedCount === 0}
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Download Selected
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    onClick={handleDeleteSelected}
+                    disabled={selectedCount === 0}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Selected
                   </Button>
                 </>
               ) : (
@@ -317,7 +368,7 @@ export function HistoryDialog({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-9 px-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                          className="h-9 px-3 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                           onClick={fetchImages}
                         >
                           <RefreshCw className="h-4 w-4 mr-2" />
@@ -334,7 +385,7 @@ export function HistoryDialog({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-9 px-3 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          className="h-9 px-3 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                           onClick={handleClearHistory}
                           disabled={images.length === 0}
                         >
@@ -352,7 +403,7 @@ export function HistoryDialog({
                 variant={isSelectionMode ? "default" : "outline"}
                 size="sm"
                 className={cn(
-                  "h-9 px-3",
+                  "h-9 px-3 rounded-full",
                   isSelectionMode && "bg-blue-600 hover:bg-blue-700 text-white"
                 )}
                 onClick={toggleSelectionMode}
@@ -493,7 +544,7 @@ export function HistoryDialog({
                                       className="h-7 w-7 bg-black/70 text-white rounded-full hover:bg-red-500/90 transition-colors"
                                       onClick={(e) => handleRemoveImage(image.id, e)}
                                     >
-                                      <X className="h-3.5 w-3.5" />
+                                      <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
                                 </div>
@@ -562,7 +613,7 @@ export function HistoryDialog({
                 <div className="pt-2">
                   <Button 
                     onClick={handleUseImage} 
-                    className="w-full mb-3 h-10 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full mb-3 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full"
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Use This Image
@@ -570,7 +621,7 @@ export function HistoryDialog({
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      className="flex-1 h-10"
+                      className="flex-1 h-10 rounded-full"
                       onClick={() => handleDownload(selectedImage)}
                     >
                       <Download className="h-4 w-4 mr-2" />
@@ -578,7 +629,7 @@ export function HistoryDialog({
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 h-10"
+                      className="flex-1 h-10 rounded-full"
                       onClick={() => handleOpenInNewTab(selectedImage)}
                     >
                       <ExternalLink className="h-4 w-4 mr-2" />
@@ -605,10 +656,17 @@ export function HistoryDialog({
                   <div className="space-y-2">
                     <Button
                       onClick={handleDownloadSelected}
-                      className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white"
+                      className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full mb-2"
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Download All Selected
+                    </Button>
+                    <Button
+                      onClick={handleDeleteSelected}
+                      className="w-full h-10 bg-red-500 hover:bg-red-600 text-white rounded-full"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete All Selected
                     </Button>
                   </div>
                 </div>
