@@ -35,6 +35,7 @@ interface Scene {
   content: string
   prompt: string
   isEditing: boolean
+  isGenerating?: boolean
   sceneNumber: number
 }
 
@@ -222,34 +223,91 @@ export default function StoryToImageGenerator() {
 
   const regeneratePrompt = async (sceneId: string, sceneContent: string) => {
     try {
-      const response = await fetch("/api/regenerate-prompt", {
+      const scene = scenes.find(s => s.id === sceneId);
+      if (!scene) return;
+
+      // Set loading state for the specific scene
+      setScenes(scenes.map(s => 
+        s.id === sceneId 
+          ? { ...s, isGenerating: true } 
+          : s
+      ));
+
+      // Use the generate-story-prompts endpoint with the specific scene content as the story
+      const response = await fetch("/api/generate-story-prompts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          sceneContent,
+          story: sceneContent,
+          sceneCount: 1, // Only generate one scene
           modelProvider,
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to regenerate prompt")
+        throw new Error("Failed to regenerate prompt");
       }
 
-      const data = await response.json()
-      setScenes(scenes.map((scene) => (scene.id === sceneId ? { ...scene, prompt: data.prompt } : scene)))
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response stream available");
+      }
 
-      toast({
-        title: "Prompt regenerated",
-        description: "New cinematic prompt generated for this scene",
-      })
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let newPrompt = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.type === "scene") {
+                newPrompt = data.scene.prompt;
+              }
+            } catch (parseError) {
+              console.error("Error parsing stream data:", parseError);
+            }
+          }
+        }
+      }
+
+      if (newPrompt) {
+        setScenes(scenes.map(s => 
+          s.id === sceneId 
+            ? { ...s, prompt: newPrompt, isGenerating: false } 
+            : s
+        ));
+
+        toast({
+          title: "Prompt regenerated",
+          description: `New cinematic prompt generated for scene ${scene.sceneNumber}`,
+        });
+      } else {
+        throw new Error("No prompt was generated");
+      }
     } catch (error) {
+      console.error("Error regenerating prompt:", error);
+      setScenes(scenes.map(s => 
+        s.id === sceneId 
+          ? { ...s, isGenerating: false } 
+          : s
+      ));
       toast({
         title: "Regeneration failed",
         description: "Failed to regenerate prompt. Please try again.",
         variant: "destructive",
-      })
+      });
     }
   }
 
@@ -274,16 +332,29 @@ export default function StoryToImageGenerator() {
     })
   }
 
-  const editPrompt = (sceneId: string, newPrompt: string) => {
-    setScenes(scenes.map((scene) => (scene.id === sceneId ? { ...scene, prompt: newPrompt, isEditing: false } : scene)))
+  const editPrompt = (sceneId: string, newPrompt: string, newContent?: string) => {
+    setScenes(scenes.map((scene) => 
+      scene.id === sceneId 
+        ? { 
+            ...scene, 
+            prompt: newPrompt,
+            content: newContent !== undefined ? newContent : scene.content,
+            isEditing: false 
+          }
+        : scene
+    ))
     toast({
-      title: "Prompt updated",
-      description: "Scene prompt has been updated",
+      title: "Scene updated",
+      description: `Scene ${scenes.find(s => s.id === sceneId)?.sceneNumber} has been updated`,
     })
   }
 
   const toggleEdit = (sceneId: string) => {
-    setScenes(scenes.map((scene) => (scene.id === sceneId ? { ...scene, isEditing: !scene.isEditing } : scene)))
+    setScenes(scenes.map((scene) => 
+      scene.id === sceneId 
+        ? { ...scene, isEditing: !scene.isEditing }
+        : scene
+    ))
   }
 
   const canContinue = scenes.length > 0 && scenes.length < sceneCount && !isComplete && !isGenerating
@@ -582,10 +653,15 @@ export default function StoryToImageGenerator() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => regeneratePrompt(scene.id, scene.content)}
+                                onClick={() => !scene.isGenerating && regeneratePrompt(scene.id, scene.content)}
                                 className="h-8 w-8 p-0"
+                                disabled={scene.isGenerating}
                               >
-                                <RefreshCw className="h-4 w-4" />
+                                {scene.isGenerating ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4" />
+                                )}
                               </Button>
                               <Button
                                 size="sm"
@@ -610,13 +686,55 @@ export default function StoryToImageGenerator() {
                         <CardContent className="space-y-6">
                           {/* Scene Content */}
                           <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                              <Eye className="h-4 w-4 text-muted-foreground" />
-                              <h4 className="font-medium text-sm">Scene Content</h4>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                <h4 className="font-medium text-sm">Scene Content</h4>
+                              </div>
+                              {!scene.isEditing && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => toggleEdit(scene.id)}
+                                  className="h-7 text-xs"
+                                >
+                                  <Edit3 className="h-3 w-3 mr-1" />
+                                  Edit
+                                </Button>
+                              )}
                             </div>
-                            <div className="bg-muted/30 border rounded-lg p-4">
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{scene.content}</p>
-                            </div>
+                            {scene.isEditing ? (
+                              <div className="space-y-3">
+                                <Textarea
+                                  value={scene.content}
+                                  onChange={(e) => {
+                                    const newContent = e.target.value
+                                    setScenes(scenes.map((s) => (s.id === scene.id ? { ...s, content: newContent } : s)))
+                                  }}
+                                  className="min-h-[100px] resize-none"
+                                  placeholder="Edit your scene content..."
+                                />
+                                <div className="flex gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => editPrompt(scene.id, scene.prompt, scene.content)}
+                                  >
+                                    Save Changes
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => toggleEdit(scene.id)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="bg-muted/30 border rounded-lg p-4">
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{scene.content}</p>
+                              </div>
+                            )}
                           </div>
 
                           <Separator className="my-4" />
