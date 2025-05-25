@@ -15,55 +15,70 @@ export async function POST(request: NextRequest) {
     const endScene = sceneCount
 
     // Select the model based on provider
-    const model = modelProvider === "gemini" ? google("gemini-2.0-flash-exp") : openai("gpt-4.1-mini-2025-04-14")
+    const model = modelProvider === "gemini" ? google("gemini-2.0-flash") : openai("gpt-4.1-mini-2025-04-14")
 
     const prompt = `You are an expert at creating cinematic image generation prompts for animated movie-style storytelling. 
 
-Here is the entire story:
+Here is the entire horror story:
 ${story}
 
 CRITICAL REQUIREMENTS:
-- You MUST generate exactly ${sceneCount} scenes total
+- You MUST generate exactly ${sceneCount} scenes total (50 scenes total for the complete story)
 - ${continueFrom ? `Continue from scene ${startScene} to scene ${endScene}` : `Generate scenes 1 to ${sceneCount}`}
 - Each scene MUST cover a portion of the story chronologically
-- The story MUST be completely covered from beginning to end across all ${sceneCount} scenes
-- Do NOT skip any parts of the story
-- Distribute the story content evenly across all ${sceneCount} scenes
+- The story MUST be completely covered from beginning to end across all 50 scenes
+- Focus on creating horror-themed, atmospheric, and visually striking scenes
+- Each scene should be a complete visual moment that advances the story
 
 Your task is to:
-1. Analyze the complete story structure, characters, and narrative flow
+1. Analyze the complete horror story structure, characters, and narrative flow
 2. ${continueFrom ? `Continue breaking down the story from scene ${startScene}` : `Break down the story into exactly ${sceneCount} distinct cinematic scenes`}
-3. Ensure the entire story is covered chronologically
-4. For each scene, extract the relevant story content, then create a detailed image generation prompt
+3. Ensure the entire story is covered chronologically across all 50 scenes
+4. For each scene, create a detailed image generation prompt following the structure below
 
-IMPORTANT: You must respond in this EXACT format for each scene:
+IMPORTANT: You must respond in this EXACT JSON format for each scene:
 
 SCENE_START_[NUMBER]
-STORY_CONTENT: [Extract the specific part of the story that this scene represents - actual dialogue, actions, and narrative from the original story]
-PROMPT: [Your detailed cinematic image prompt following the structure below]
+STORY_CONTENT: [A brief 2-3 word Bengali/English description of the scene]
+PROMPT: [A detailed horror-themed prompt in the following JSON structure]
 SCENE_END
 
-For the PROMPT section, use this structure:
+For the PROMPT section, use this structure (output as valid JSON):
 
-Main Subject: [Enhanced subject description with emotional elements - include character gender, appearance, clothing, facial expressions, body language, and specific actions they're performing]
+{
+  "sceneNumber": [scene number],
+  "prompt": "Main Subject: [Detailed description of characters including gender, appearance, clothing, facial expressions, and actions. Example: 'A young woman in her 20s with long black hair, wearing a torn white dress, her face frozen in terror as she looks over her shoulder. Her eyes are wide with fear, lips slightly parted in a silent scream.']\n\nScene Context: [Atmospheric details including location, time of day, weather, lighting. Example: 'A decrepit Victorian mansion at midnight during a thunderstorm. Lightning flashes reveal peeling wallpaper and broken furniture. The air is thick with dust and the scent of decay.']\n\nComposition: [Camera angle, framing, and visual elements. Example: 'Medium close-up shot with a slightly low angle, making the character appear vulnerable. The frame is tight with shallow depth of field, focusing on the character's terrified expression while the background blurs into darkness.']\n\nStyle Notes: [Artistic style, color palette, and mood. Example: 'Dark, cinematic horror aesthetic with high contrast lighting. Color palette of deep blues, sickly greens, and blood red accents. Inspired by Japanese horror films with subtle visual distortion to create unease.']",
+  "content": "[2-3 word Bengali/English description]"
+}
 
-Scene Context: [Environmental and atmospheric details - location, time of day, weather, lighting conditions, mood, and any relevant background elements]
+GUIDELINES FOR HORROR PROMPTS:
+- Focus on creating a strong sense of atmosphere and tension in every scene
+- Include detailed character descriptions (gender, age, appearance, clothing, emotions)
+- Emphasize environmental storytelling - the setting should feel like a character itself
+- Use lighting and weather to enhance the horror mood (moonlight, flickering lights, fog, rain)
+- Include specific horror elements (shadows, reflections, subtle background details)
+- Maintain visual consistency for characters and locations throughout the scenes
+- No dialogue or text in the images
+- Each scene should be a complete, visually compelling moment
+- Focus on showing, not telling - the horror should be visual and atmospheric
+- Use cinematic composition techniques (rule of thirds, leading lines, framing)
+- Describe specific facial expressions and body language that convey fear, tension, or dread
+- Include subtle horror elements in the background that might be noticed on second glance
+- Use color psychology to enhance the mood (blues for cold fear, reds for danger, etc.)
+- Vary camera angles and distances to create visual interest and emotional impact
+- Ensure smooth transitions between scenes to maintain narrative flow
+- Each prompt should be detailed enough for high-quality AI image generation
+- The 'content' field should be a simple 2-3 word description in Bengali/English
+- The 'prompt' field should be a detailed, multi-paragraph description
+- Focus on creating a sense of unease and tension even in quieter scenes
+- Remember that horror is often most effective when it's subtle and psychological
+- Use environmental storytelling to hint at backstory and build atmosphere
+- Include specific, concrete details that make the horror feel real and immediate
+- Vary the types of horror (psychological, supernatural, body horror, etc.) to keep it interesting
+- Ensure the horror elements are culturally appropriate and respectful
+- The final output should be a cohesive, terrifying visual narrative when viewed in sequence
 
-Composition: [Camera angle, framing, perspective, depth of field, and visual composition notes that would make this scene cinematic]
-
-Style Notes: [Artistic style, color palette, lighting effects, and any specific visual techniques that enhance the storytelling]
-
-GUIDELINES:
-- Focus on actual scenes with characters performing specific actions
-- Include detailed character descriptions (gender, appearance, emotions, clothing)
-- Make each scene feel like a frame from an animated movie
-- Ensure scenes flow logically to tell the complete story
-- Focus on visual storytelling - what can be seen and felt in the image
-- Include environmental details that set the mood and atmosphere
-- Make prompts detailed enough for high-quality AI image generation
-- Maintain character consistency throughout the scenes
-- Include specific lighting and composition notes for cinematic quality
-- ENSURE you generate ALL requested scenes from ${startScene} to ${endScene}
+ENSURE you generate ALL requested scenes from ${startScene} to ${endScene} out of the total 50 scenes.
 
 ${continueFrom ? `Continue generating scenes ${startScene} through ${endScene} now:` : `Generate all ${sceneCount} scenes now (1 through ${sceneCount}):`}`
 
